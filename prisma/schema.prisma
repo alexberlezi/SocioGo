@@ -1,0 +1,137 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "mysql"
+  url      = env("DATABASE_URL")
+}
+
+// 1. User
+model User {
+  id        Int       @id @default(autoincrement())
+  email     String    @unique
+  password  String
+  role      Role      @default(SOCIO)
+  status    UserStatus @default(PENDING)
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+
+  profile            Profile?
+  financialRecords   FinancialRecord[]
+  eventRegistrations EventRegistration[]
+  signatures         DocumentSignature[]
+}
+
+enum Role {
+  ADMIN
+  DIRETOR
+  SOCIO
+}
+
+enum UserStatus {
+  PENDING
+  APPROVED
+  REJECTED
+}
+
+// 2. Profile
+model Profile {
+  id              Int     @id @default(autoincrement())
+  fullName        String
+  cpf             String  @unique
+  bio             String? @db.Text
+  skills          String? @db.Text
+  socialLinks     Json?   // Links sociais
+  isPublicConsent Boolean @default(false)
+  
+  userId          Int     @unique
+  user            User    @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+// 3. FinancialRecord
+model FinancialRecord {
+  id          Int             @id @default(autoincrement())
+  type        FinancialType   // Mensalidades ou Cobranças Avulsas
+  description String?
+  amount      Decimal         @db.Decimal(10, 2)
+  dueDate     DateTime        // Vencimento
+  status      FinancialStatus @default(PENDING)
+  
+  userId      Int
+  user        User            @relation(fields: [userId], references: [id], onDelete: Cascade)
+  
+  createdAt   DateTime        @default(now())
+  updatedAt   DateTime        @updatedAt
+}
+
+enum FinancialType {
+  MENSALIDADE
+  AVULSA
+}
+
+enum FinancialStatus {
+  PENDING
+  PAID
+  OVERDUE
+  CANCELLED
+}
+
+// 4. Event
+model Event {
+  id          Int      @id @default(autoincrement())
+  title       String
+  description String?  @db.Text
+  date        DateTime
+  prices      Json     // Preços em JSON para sócio/público
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  registrations EventRegistration[]
+}
+
+// 5. EventRegistration
+model EventRegistration {
+  id        Int                @id @default(autoincrement())
+  status    RegistrationStatus @default(REGISTERED) // Status de check-in
+  checkInAt DateTime?
+  
+  userId    Int
+  user      User               @relation(fields: [userId], references: [id], onDelete: Cascade)
+  eventId   Int
+  event     Event              @relation(fields: [eventId], references: [id], onDelete: Cascade)
+  
+  createdAt DateTime           @default(now())
+  updatedAt DateTime           @updatedAt
+
+  @@unique([userId, eventId])
+}
+
+enum RegistrationStatus {
+  REGISTERED
+  CHECKED_IN
+  CANCELLED
+}
+
+// 6. DocumentAta
+model DocumentAta {
+  id        Int                 @id @default(autoincrement())
+  pdfPath   String
+  status    String              // Status do documento
+  createdAt DateTime            @default(now())
+  updatedAt DateTime            @updatedAt
+
+  signatures DocumentSignature[]
+}
+
+model DocumentSignature {
+  id         Int         @id @default(autoincrement())
+  signedAt   DateTime    @default(now())
+  
+  userId     Int
+  user       User        @relation(fields: [userId], references: [id], onDelete: Cascade)
+  documentId Int
+  document   DocumentAta @relation(fields: [documentId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, documentId])
+}
