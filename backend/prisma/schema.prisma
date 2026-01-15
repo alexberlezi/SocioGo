@@ -21,6 +21,7 @@ model User {
   financialRecords   FinancialRecord[]
   eventRegistrations EventRegistration[]
   signatures         DocumentSignature[]
+  dependents         Dependent[]
 }
 
 enum Role {
@@ -37,16 +38,81 @@ enum UserStatus {
 
 // 2. Profile
 model Profile {
-  id              Int     @id @default(autoincrement())
-  fullName        String
-  cpf             String  @unique
+  id              Int        @id @default(autoincrement())
+  type            PersonType @default(PF)
+  
+  // Common / PF Fields
+  fullName        String?    // Nome completo (PF) ou Razão Social (PJ - ou usar campo específico)
+  cpf             String?    @unique // PF
+  birthDate       DateTime?  // PF
+  phone           String?    // PF/PJ
+  
+  // PJ Fields
+  socialReason    String?    // Razão Social
+  fantasyName     String?    // Nome Fantasia
+  cnpj            String?    @unique // PJ
+  stateRegistration String?  // Inscrição Estadual
+  responsibleName String?    // Nome Responsável
+  responsibleCpf  String?    // CPF Responsável
+
+  // Address
+  zipCode         String?
+  street          String?
+  number          String?
+  complement      String?
+  district        String?
+  city            String?
+  state           String?
+
+  // Professional (PF)
+  education            String? // Formação Acadêmica
+  professionalRegistry String? // Registro Profissional (CREA/CAU)
+  currentCompany       String? // Empresa onde trabalha
+  jobRole              String? // Área de Atuação
+
+  // Company Data (PJ)
+  activityBranch       String? // Ramo de Atividade
+  employeeCount        Int?    // Número de Funcionários
+  website              String? // Site da Empresa
+
+  // Extra
   bio             String? @db.Text
   skills          String? @db.Text
   socialLinks     Json?   // Links sociais
   isPublicConsent Boolean @default(false)
   
+  // Documents (Paths)
+  docRgCnh              String?
+  docCpf                String?
+  docDiploma            String?
+  docProfessionalRegistry String?
+  docSocialContract     String?
+  docCnpjCard           String?
+  docResponsibleRg      String?
+  docPartnerPhoto       String?
+
   userId          Int     @unique
   user            User    @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+enum PersonType {
+  PF
+  PJ
+}
+
+model Dependent {
+  id        Int      @id @default(autoincrement())
+  name      String
+  kinship   Kinship
+  birthDate DateTime
+  
+  userId    Int
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+enum Kinship {
+  CONJUGE
+  FILHO
 }
 
 // 3. FinancialRecord
