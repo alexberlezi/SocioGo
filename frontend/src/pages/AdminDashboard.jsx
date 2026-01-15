@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import MemberApprovalCard from '../components/MemberApprovalCard';
+import AdminLayout from '../components/layout/AdminLayout';
 import { Users, Filter, Search } from 'lucide-react';
 
 const AdminDashboard = () => {
@@ -86,83 +87,56 @@ const AdminDashboard = () => {
     });
 
     return (
-        <div className="min-h-screen bg-gray-50 bg-[url('https://grainy-gradients.vercel.app/noise.svg')]">
-            {/* Top Bar */}
-            <header className="bg-white border-b border-gray-200 sticky top-0 z-30">
-                <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between">
-                    <div className="flex items-center space-x-3">
-                        <div className="bg-blue-600 p-2 rounded-lg text-white">
-                            <Users className="w-5 h-5" />
-                        </div>
-                        <h1 className="text-xl font-bold text-gray-900">Portal Admin</h1>
-                    </div>
-                    <div className="flex items-center space-x-4">
-                        <span className="text-sm font-medium text-gray-500">
-                            Bem-vindo, Alexander Berlezi
-                        </span>
-                        <div className="w-8 h-8 bg-gray-200 rounded-full flex items-center justify-center text-gray-600 font-bold">
-                            A
-                        </div>
-                    </div>
-                </div>
-            </header>
-
-            <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-                {/* Stats / Header Area */}
-                <div className="mb-8 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
-                    <div>
-                        <h2 className="text-2xl font-bold text-gray-900">Aprovação de Sócios</h2>
-                        <p className="text-gray-500 mt-1">Gerencie os novos pedidos de cadastro.</p>
-                    </div>
-
-                    {/* Search Bar */}
-                    <div className="relative">
-                        <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-5 h-5" />
-                        <input
-                            type="text"
-                            placeholder="Buscar por nome, CPF, e-mail..."
-                            className="pl-10 pr-4 py-2 border border-gray-300 rounded-lg w-full sm:w-80 focus:ring-2 focus:ring-blue-100 focus:border-blue-400 outline-none transition-all"
-                            value={searchTerm}
-                            onChange={(e) => setSearchTerm(e.target.value)}
-                        />
-                    </div>
+        <AdminLayout>
+            {/* Stats / Header Area */}
+            <div className="mb-8 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+                <div>
+                    <h2 className="text-2xl font-bold text-gray-900 dark:text-white">Aprovação de Sócios</h2>
+                    <p className="text-gray-500 dark:text-gray-400 mt-1">Gerencie os novos pedidos de cadastro.</p>
                 </div>
 
-                {/* Content Grid */}
-                {loading ? (
-                    <div className="text-center py-20">
-                        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto mb-4"></div>
-                        <p className="text-gray-500">Carregando solicitações...</p>
+                {/* Search Bar */}
+                <div className="relative">
+                    <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-5 h-5" />
+                    <input
+                        type="text"
+                        placeholder="Buscar por nome, CPF, e-mail..."
+                        className="pl-10 pr-4 py-2 border border-gray-300 dark:border-slate-700 bg-white dark:bg-slate-800 rounded-lg w-full sm:w-80 focus:ring-2 focus:ring-blue-100 focus:border-blue-400 outline-none transition-all text-gray-900 dark:text-gray-100 placeholder-gray-400"
+                        value={searchTerm}
+                        onChange={(e) => setSearchTerm(e.target.value)}
+                    />
+                </div>
+            </div>
+
+            {/* Content Grid */}
+            {loading ? (
+                <div className="text-center py-20">
+                    <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto mb-4"></div>
+                    <p className="text-gray-500 dark:text-gray-400">Carregando solicitações...</p>
+                </div>
+            ) : filteredMembers.length === 0 ? (
+                <div className="text-center py-20 bg-white dark:bg-slate-900 rounded-2xl border border-gray-100 dark:border-slate-800 shadow-sm">
+                    <div className="bg-gray-50 dark:bg-slate-800 w-16 h-16 rounded-full flex items-center justify-center mx-auto mb-4">
+                        <Users className="w-8 h-8 text-gray-400" />
                     </div>
-                ) : filteredMembers.length === 0 ? (
-                    <div className="text-center py-20 bg-white rounded-2xl border border-gray-100 shadow-sm">
-                        <div className="bg-gray-50 w-16 h-16 rounded-full flex items-center justify-center mx-auto mb-4">
-                            <Users className="w-8 h-8 text-gray-400" />
-                        </div>
-                        <h3 className="text-lg font-medium text-gray-900 mb-1">Nenhum cadastro pendente</h3>
-                        <p className="text-gray-500">Todas as solicitações foram processadas.</p>
+                    <h3 className="text-lg font-medium text-gray-900 dark:text-white mb-1">Nenhum cadastro pendente</h3>
+                    <p className="text-gray-500 dark:text-gray-400">Todas as solicitações foram processadas.</p>
+                </div>
+            ) : (
+                <div className="grid grid-cols-1 gap-6">
+                    <div className="space-y-6">
+                        {filteredMembers.map(member => (
+                            <MemberApprovalCard
+                                key={member.id}
+                                member={member}
+                                onApprove={handleApprove}
+                                onReject={handleReject}
+                            />
+                        ))}
                     </div>
-                ) : (
-                    <div className="grid grid-cols-1 lg:grid-cols-2 ml:grid-cols-1 gap-6">
-                        {/* Note: I used lg:grid-cols-2 but for detailed cards sometimes 1 col is better depending on width. 
-                            Let's keep it 1 col for main list or 2 if space allows. 
-                            Actually, 'MemberApprovalCard' is quite wide. grid-cols-1 might be safer for readability unless screen is huge.
-                            Let's stick to grid-cols-1 for now to ensure quality viewing of the "Social Profile" card. 
-                        */}
-                        <div className="lg:col-span-2 space-y-6">
-                            {filteredMembers.map(member => (
-                                <MemberApprovalCard
-                                    key={member.id}
-                                    member={member}
-                                    onApprove={handleApprove}
-                                    onReject={handleReject}
-                                />
-                            ))}
-                        </div>
-                    </div>
-                )}
-            </main>
-        </div>
+                </div>
+            )}
+        </AdminLayout>
     );
 };
 
