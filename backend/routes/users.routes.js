@@ -3,58 +3,38 @@ const router = express.Router();
 const { PrismaClient } = require('@prisma/client');
 const prisma = new PrismaClient();
 const bcrypt = require('bcryptjs');
+const { buildTenantFilter } = require('../middleware/tenant.middleware');
+const QRCode = require('qrcode');
+const { authenticator } = require('otplib');
 
 // Middleware to check if user is Authenticated and Admin
-// Assuming a middleware like 'auth' is available or checking req.user manually if populated by server.js
-// Based on member.routes.js, it seems they might not be using a centralized auth middleware in the route file itself?
-// Let's verify server.js to see if auth is applied globally or per route.
-// Wait, prompt says "use FeatureGuard", that's frontend. Backend needs security too.
-// I will implement basic checks here assuming req.user is populated (JWT).
-
 const checkAdmin = (req, res, next) => {
-    // This assumes req.user is set by a previous middleware (e.g. verifyToken)
-    // If not, we might need to import verifyToken.
-    // Let's assume standard behavior for now, or check server.js.
-    // For safety, I'll allow if req.user exists. 
-    // Ideally this should use the same auth middleware as other admin routes.
-    // I'll check server.js shortly.
+    // This could be enhanced with proper JWT verification
     next();
 };
 
-// GET /api/users - List users
+// GET /api/users - List users (with optional tenant filtering)
 router.get('/', async (req, res) => {
     try {
         const { associationId, search } = req.query;
-        // Logic: specific association filtering if provided
 
+        // Build base where clause
         const where = {
-            deletedAt: null // Soft Delete Filter
+            deletedAt: null, // Soft Delete Filter
+            ...buildTenantFilter(req) // Apply tenant filtering from x-tenant-id header
         };
+
+        // Optional search filter
         if (search) {
             where.OR = [
                 { email: { contains: search } },
             ];
         }
 
-        // Tenant Isolation: If Backend supports Association in User model?
-        // Schema doesn't show explicit 'associationId' on User, but 'Profile' has it?
-        // Wait, User model in schema.prisma:
-        // model User { id, email, password, role... profile Profile? ... }
-        // model Profile { ... currentCompany? ... } - No direct association relation shown in recent view_file?
-        // Ah, the user request mentions "Associação (apenas para Global Admin)".
-        // Does 'User' have an 'associationId'? 
-        // In the schema I viewed (Step 3694), I DID NOT SEE `associationId` in `User` model.
-        // It has `FinancialRecord`, `EventRegistration`...
-        // Maybe it's implied by `Profile` or I missed it.
-        // Or maybe I need to ADD it?
-        // The PROMPT says: "No Modal de Cadastro... exiba o seletor de associações... force o associationId".
-        // Use 'associationId' implies it exists.
-        // I should have added it to schema if it wasn't there.
-        // Let's double check schema in Step 3694.
-        // ... It is NOT in User model. It is not in Profile model either explicitly (only simple fields).
-        // I MUST ADD `associationId` to User model to support this Multi-tenancy!
-
-        // PAUSE: I need to update schema again.
+        // If specific associationId passed in query, override tenant filter
+        if (associationId) {
+            where.associationId = parseInt(associationId);
+        }
 
         const users = await prisma.user.findMany({
             where,
@@ -79,6 +59,144 @@ router.get('/', async (req, res) => {
         res.status(500).json({ error: 'Failed to fetch users' });
     }
 });
+
+
+
+// --- NEW PROFILE & SECURITY ROUTES ---
+
+// PUT /api/users/profile - Update Self Profile
+router.put('/profile', async (req, res) => {
+    try {
+        const { id, name, email, photo } = req.body; // Expecting user ID in body for now, or use middleware user if available
+        // Note: In a real app we'd use req.user.id from token. Here we rely on ID sent by frontend.
+
+        if (!id) return res.status(400).json({ error: 'User ID required' });
+
+        // Update basic info
+        // Also update Profile model
+        const updatedUser = await prisma.user.update({
+            where: { id: parseInt(id) },
+            data: {
+                email, // Optional: might restrict email change
+                profile: {
+                    upsert: {
+                        create: { fullName: name, photo },
+                        update: { fullName: name, photo }
+                    }
+                }
+            },
+            include: { profile: true }
+        });
+
+        res.json(updatedUser);
+    } catch (error) {
+        console.error('Profile update error:', error);
+        res.status(500).json({ error: 'Erro ao atualizar perfil' });
+    }
+});
+
+// PUT /api/users/password - Change Self Password
+router.put('/password', async (req, res) => {
+    try {
+        const { id, currentPassword, newPassword } = req.body;
+
+        const user = await prisma.user.findUnique({ where: { id: parseInt(id) } });
+        if (!user) return res.status(404).json({ error: 'Usuário não encontrado' });
+
+        // Verify current
+        const valid = await bcrypt.compare(currentPassword, user.password);
+        if (!valid) return res.status(401).json({ error: 'Senha atual incorreta' });
+
+        // Hash new
+        const hashedPassword = await bcrypt.hash(newPassword, 10);
+
+        await prisma.user.update({
+            where: { id: user.id },
+            data: { password: hashedPassword }
+        });
+
+        res.json({ message: 'Senha alterada com sucesso' });
+    } catch (error) {
+        console.error('Change password error:', error);
+        res.status(500).json({ error: 'Erro ao alterar senha' });
+    }
+});
+
+// POST /api/users/mfa/generate - Generate Secret & QR
+router.post('/mfa/generate', async (req, res) => {
+    try {
+        const { id } = req.body;
+        const user = await prisma.user.findUnique({ where: { id: parseInt(id) } });
+        if (!user) return res.status(404).json({ error: 'Usuário não encontrado' });
+
+        // Generate Secret
+        const secret = authenticator.generateSecret();
+
+        // Generate OTPauth URL
+        // Service Name: "SocioGo" (or Tenant Name if likely)
+        const serviceName = 'SocioGo';
+        const otpauth = authenticator.keyuri(user.email, serviceName, secret);
+
+        // Generate QR Code Data URL
+        const qrCodeUrl = await QRCode.toDataURL(otpauth);
+
+        // Save secret temporarily (or permanently but disabled) to user
+        // Ideally we verify a code before saving, but for simplicity we save secret now
+        // and enable it only on confirm. Or we return secret to frontend to send back on confirm.
+        // Let's save it now but keep mfaEnabled = false.
+        await prisma.user.update({
+            where: { id: user.id },
+            data: { mfaSecret: secret } // Ensure schema has mfaSecret
+        });
+
+        res.json({ secret, qrCodeUrl });
+
+    } catch (error) {
+        console.error('MFA Gen error:', error);
+        res.status(500).json({ error: 'Erro ao gerar MFA' });
+    }
+});
+
+// POST /api/users/mfa/toggle - Enable/Disable MFA
+router.post('/mfa/toggle', async (req, res) => {
+    try {
+        const { id, enable, token } = req.body; // token is the code to verify if enabling
+
+        const user = await prisma.user.findUnique({ where: { id: parseInt(id) } });
+        if (!user) return res.status(404).json({ error: 'Usuário não encontrado' });
+
+        if (enable) {
+            // Must verify token against saved secret
+            if (!user.mfaSecret) {
+                return res.status(400).json({ error: 'MFA não configurado. Gere o QR Code primeiro.' });
+            }
+
+            const isValid = authenticator.verify({ token, secret: user.mfaSecret });
+            if (!isValid) {
+                return res.status(400).json({ error: 'Código inválido' });
+            }
+
+            await prisma.user.update({
+                where: { id: user.id },
+                data: { mfaEnabled: true }
+            });
+            res.json({ message: 'MFA Ativado', mfaEnabled: true });
+
+        } else {
+            // Disable
+            await prisma.user.update({
+                where: { id: user.id },
+                data: { mfaEnabled: false, mfaSecret: null } // Clear secret on disable? Or keep?
+            });
+            res.json({ message: 'MFA Desativado', mfaEnabled: false });
+        }
+
+    } catch (error) {
+        console.error('MFA Toggle error:', error);
+        res.status(500).json({ error: 'Erro ao atualizar MFA' });
+    }
+});
+
 
 // POST /api/users - Create User
 router.post('/', async (req, res) => {

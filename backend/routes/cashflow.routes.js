@@ -1,12 +1,16 @@
 const express = require('express');
 const router = express.Router();
+const { buildTenantFilter } = require('../middleware/tenant.middleware');
 const { PrismaClient } = require('@prisma/client');
 const prisma = new PrismaClient();
 
 // GET /api/finance/cashflow - Get all entries and summary
 router.get('/', async (req, res) => {
     try {
+        const where = buildTenantFilter(req);
+
         const entries = await prisma.cashFlowEntry.findMany({
+            where,
             include: { categoryRef: true },
             orderBy: { createdAt: 'desc' }
         });
@@ -63,7 +67,8 @@ router.post('/', async (req, res) => {
                 type,
                 categoryId: parseInt(categoryId),
                 operatorId: operatorId ? parseInt(operatorId) : null,
-                operatorName: operatorName || 'Admin User'
+                operatorName: operatorName || 'Admin User',
+                associationId: req.tenantId // Link to current tenant
             }
         });
 
@@ -77,7 +82,10 @@ router.post('/', async (req, res) => {
                     entityType: 'CASH_FLOW',
                     entityId: entry.id,
                     newValue: entry,
-                    description: `Lançamento de ${type === 'IN' ? 'Entrada' : 'Saída'}: ${description} - R$ ${amount}`
+                    entityId: entry.id,
+                    newValue: entry,
+                    description: `Lançamento de ${type === 'IN' ? 'Entrada' : 'Saída'}: ${description} - R$ ${amount}`,
+                    associationId: req.tenantId
                 }
             });
         }

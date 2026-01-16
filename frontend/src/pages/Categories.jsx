@@ -12,6 +12,7 @@ import {
 } from 'lucide-react';
 import AdminLayout from '../components/layout/AdminLayout';
 import { toast } from 'react-hot-toast';
+import api from '../utils/api';
 
 const Categories = () => {
     const [loading, setLoading] = useState(true);
@@ -27,11 +28,19 @@ const Categories = () => {
 
     useEffect(() => {
         fetchCategories();
+
+        // Listen for tenant changes and auto-refresh
+        const handleTenantChange = () => {
+            setLoading(true);
+            fetchCategories();
+        };
+        window.addEventListener('tenantChanged', handleTenantChange);
+        return () => window.removeEventListener('tenantChanged', handleTenantChange);
     }, []);
 
     const fetchCategories = async () => {
         try {
-            const response = await fetch('http://localhost:3000/api/categories');
+            const response = await api.get('/api/categories');
             if (response.ok) {
                 const data = await response.json();
                 setCategories(data);

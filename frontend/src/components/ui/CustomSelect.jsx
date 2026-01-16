@@ -36,10 +36,10 @@ const CustomSelect = ({
             <button
                 type="button"
                 onClick={() => setIsOpen(!isOpen)}
-                className={`w-full h-12 px-4 flex items-center justify-between bg-slate-900/90 border transition-all rounded-xl text-sm font-medium outline-none ${isOpen
-                    ? 'border-blue-500 ring-2 ring-blue-500/20'
-                    : 'border-blue-500/30 hover:border-blue-500/50'
-                    } ${selectedOption ? 'text-slate-200' : 'text-slate-500'}`}
+                className={`w-full h-12 px-4 flex items-center justify-between bg-gray-50 dark:bg-slate-900/90 border transition-all rounded-xl text-sm font-medium outline-none ${isOpen
+                        ? 'border-blue-500 ring-2 ring-blue-500/20'
+                        : 'border-gray-200 dark:border-blue-500/30 hover:border-blue-400 dark:hover:border-blue-500/50'
+                    } ${selectedOption ? 'text-gray-800 dark:text-slate-200' : 'text-gray-500 dark:text-slate-500'}`}
             >
                 <div className="flex items-center gap-3 truncate pr-2">
                     {selectedOption ? (
@@ -51,16 +51,16 @@ const CustomSelect = ({
                         </>
                     ) : (
                         <div className="flex items-center gap-3">
-                            {Icon && <Icon className="w-4 h-4 text-slate-500" />}
+                            {Icon && <Icon className="w-4 h-4 text-gray-400 dark:text-slate-500" />}
                             <span>{placeholder}</span>
                         </div>
                     )}
                 </div>
-                <ChevronDown className={`w-4 h-4 text-slate-500 transition-transform duration-200 flex-shrink-0 ${isOpen ? 'rotate-180' : ''}`} />
+                <ChevronDown className={`w-4 h-4 text-gray-400 dark:text-slate-500 transition-transform duration-200 flex-shrink-0 ${isOpen ? 'rotate-180' : ''}`} />
             </button>
 
             {/* Dropdown Menu */}
-            <div className={`absolute left-0 right-0 mt-2 bg-slate-900 border border-slate-800 rounded-xl shadow-2xl z-[110] overflow-hidden origin-top transition-all duration-150 ${isOpen ? 'opacity-100 scale-100 translate-y-0' : 'opacity-0 scale-95 -translate-y-2 pointer-events-none'
+            <div className={`absolute left-0 right-0 mt-2 bg-white dark:bg-slate-900 border border-gray-200 dark:border-slate-800 rounded-xl shadow-2xl z-[110] overflow-hidden origin-top transition-all duration-150 ${isOpen ? 'opacity-100 scale-100 translate-y-0' : 'opacity-0 scale-95 -translate-y-2 pointer-events-none'
                 }`}>
                 <div className="p-1.5 space-y-0.5 max-h-60 overflow-y-auto custom-scrollbar">
                     {options.length > 0 ? (
@@ -73,8 +73,8 @@ const CustomSelect = ({
                                     setIsOpen(false);
                                 }}
                                 className={`flex items-center w-full px-3 py-2.5 text-sm rounded-lg transition-all gap-3 ${String(value) === String(option.id)
-                                    ? 'bg-blue-600 text-white font-medium shadow-md shadow-blue-900/20'
-                                    : 'text-slate-400 hover:bg-slate-800 hover:text-white'
+                                        ? 'bg-blue-600 text-white font-medium shadow-md shadow-blue-900/20'
+                                        : 'text-gray-600 dark:text-slate-400 hover:bg-gray-100 dark:hover:bg-slate-800 hover:text-gray-900 dark:hover:text-white'
                                     }`}
                             >
                                 {option.color && (
@@ -85,7 +85,7 @@ const CustomSelect = ({
                             </button>
                         ))
                     ) : (
-                        <div className="px-4 py-8 text-center text-slate-500 text-[10px] font-bold uppercase tracking-widest opacity-50">
+                        <div className="px-4 py-8 text-center text-gray-400 dark:text-slate-500 text-[10px] font-bold uppercase tracking-widest opacity-50">
                             Nenhuma opção
                         </div>
                     )}

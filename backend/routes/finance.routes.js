@@ -2,11 +2,15 @@ const express = require('express');
 const router = express.Router();
 const { PrismaClient } = require('@prisma/client');
 const prisma = new PrismaClient();
+const { buildTenantFilter } = require('../middleware/tenant.middleware');
 
 // GET /api/finance/members/:id/history - Get member financial history
 // GET /api/finance/dashboard
 router.get('/dashboard', async (req, res) => {
     try {
+        const tenantFilter = buildTenantFilter(req);
+        console.log('[FinanceDashboard] Tenant Filter:', tenantFilter);
+
         const now = new Date();
         const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
         const endOfMonth = new Date(now.getFullYear(), now.getMonth() + 1, 0);
@@ -16,14 +20,18 @@ router.get('/dashboard', async (req, res) => {
         const revenue = await prisma.financialRecord.aggregate({
             where: {
                 status: 'PAID',
-                updatedAt: { gte: startOfMonth, lte: endOfMonth }
+                updatedAt: { gte: startOfMonth, lte: endOfMonth },
+                user: tenantFilter.associationId ? { associationId: tenantFilter.associationId } : undefined
             },
             _sum: { amount: true }
         });
 
         // Delinquency (Total Overdue)
         const delinquency = await prisma.financialRecord.aggregate({
-            where: { status: 'OVERDUE' },
+            where: {
+                status: 'OVERDUE',
+                user: tenantFilter.associationId ? { associationId: tenantFilter.associationId } : undefined
+            },
             _sum: { amount: true }
         });
 
@@ -31,7 +39,8 @@ router.get('/dashboard', async (req, res) => {
         const projection = await prisma.financialRecord.aggregate({
             where: {
                 status: 'PENDING',
-                dueDate: { lte: endOfMonth }
+                dueDate: { lte: endOfMonth },
+                user: tenantFilter.associationId ? { associationId: tenantFilter.associationId } : undefined
             },
             _sum: { amount: true }
         });
@@ -40,7 +49,8 @@ router.get('/dashboard', async (req, res) => {
         const newMembersCount = await prisma.user.count({
             where: {
                 createdAt: { gte: startOfMonth, lte: endOfMonth },
-                role: 'SOCIO'
+                role: 'SOCIO',
+                ...tenantFilter
             }
         });
 
@@ -54,11 +64,19 @@ router.get('/dashboard', async (req, res) => {
             const monthName = d.toLocaleDateString('pt-BR', { month: 'short' });
 
             const paid = await prisma.financialRecord.aggregate({
-                where: { status: 'PAID', dueDate: { gte: mStart, lte: mEnd } },
+                where: {
+                    status: 'PAID',
+                    dueDate: { gte: mStart, lte: mEnd },
+                    user: tenantFilter.associationId ? { associationId: tenantFilter.associationId } : undefined
+                },
                 _sum: { amount: true }
             });
             const pending = await prisma.financialRecord.aggregate({
-                where: { status: { in: ['PENDING', 'OVERDUE'] }, dueDate: { gte: mStart, lte: mEnd } },
+                where: {
+                    status: { in: ['PENDING', 'OVERDUE'] },
+                    dueDate: { gte: mStart, lte: mEnd },
+                    user: tenantFilter.associationId ? { associationId: tenantFilter.associationId } : undefined
+                },
                 _sum: { amount: true }
             });
 
@@ -71,7 +89,11 @@ router.get('/dashboard', async (req, res) => {
 
         // 3. Upcoming Payments
         const upcoming = await prisma.financialRecord.findMany({
-            where: { status: 'PENDING', dueDate: { gte: now } },
+            where: {
+                status: 'PENDING',
+                dueDate: { gte: now },
+                user: tenantFilter.associationId ? { associationId: tenantFilter.associationId } : undefined
+            },
             take: 5,
             orderBy: { dueDate: 'asc' },
             include: { user: { include: { profile: true } } }
@@ -79,7 +101,10 @@ router.get('/dashboard', async (req, res) => {
 
         // 4. Critical Delays
         const critical = await prisma.financialRecord.findMany({
-            where: { status: 'OVERDUE' },
+            where: {
+                status: 'OVERDUE',
+                user: tenantFilter.associationId ? { associationId: tenantFilter.associationId } : undefined
+            },
             take: 5,
             orderBy: { dueDate: 'asc' },
             include: { user: { include: { profile: true } } }
@@ -89,7 +114,8 @@ router.get('/dashboard', async (req, res) => {
         const expenses = await prisma.cashFlowEntry.findMany({
             where: {
                 type: 'OUT',
-                date: { gte: startOfMonth, lte: endOfMonth }
+                date: { gte: startOfMonth, lte: endOfMonth },
+                ...tenantFilter
             },
             include: { categoryRef: true }
         });

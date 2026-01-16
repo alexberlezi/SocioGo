@@ -14,6 +14,7 @@ import AdminLayout from '../components/layout/AdminLayout';
 import { toast } from 'react-hot-toast';
 import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
+import api from '../utils/api';
 
 const MonthlyClosure = () => {
     const [year, setYear] = useState(new Date().getFullYear());
@@ -31,7 +32,7 @@ const MonthlyClosure = () => {
         const toastId = toast.loading('Gerando relatório...');
         try {
             // Fetch Report Data
-            const response = await fetch(`http://localhost:3000/api/finance/closure/report?month=${monthData.month}&year=${year}&userId=${user.id}`);
+            const response = await api.get(`/api/finance/closure/report?month=${monthData.month}&year=${year}&userId=${user.id}`);
             if (!response.ok) {
                 const text = await response.text();
                 // Try to parse JSON error, fall back to text, fall back to default
@@ -170,17 +171,24 @@ const MonthlyClosure = () => {
         }
     };
 
-    // Mock User Role - In real app, get from Context
-    const user = { id: 1, role: 'ADMIN', name: 'Admin User' }; // 'ADMIN' matches backend check or visual check
+    // Get real user from localStorage
+    const user = JSON.parse(localStorage.getItem('user')) || { id: 0, name: 'Unknown' };
 
     useEffect(() => {
         fetchclosures();
+
+        const handleTenantChange = () => {
+            setLoading(true);
+            fetchclosures();
+        };
+        window.addEventListener('tenantChanged', handleTenantChange);
+        return () => window.removeEventListener('tenantChanged', handleTenantChange);
     }, [year]);
 
     const fetchclosures = async () => {
         setLoading(true);
         try {
-            const response = await fetch(`http://localhost:3000/api/finance/closure?year=${year}`);
+            const response = await api.get(`/api/finance/closure?year=${year}`);
             if (response.ok) {
                 const data = await response.json();
                 setMonthsData(data);
@@ -202,14 +210,10 @@ const MonthlyClosure = () => {
         if (!monthToClose) return;
 
         try {
-            const response = await fetch('http://localhost:3000/api/finance/closure/close', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({
-                    month: monthToClose.month,
-                    year,
-                    userId: user.id
-                })
+            const response = await api.post('/api/finance/closure/close', {
+                month: monthToClose.month,
+                year,
+                userId: user.id
             });
 
             if (response.ok) {
@@ -239,15 +243,11 @@ const MonthlyClosure = () => {
         }
 
         try {
-            const response = await fetch('http://localhost:3000/api/finance/closure/reopen', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({
-                    month: selectedMonth.month,
-                    year,
-                    userId: user.id,
-                    reason: reopenReason
-                })
+            const response = await api.post('/api/finance/closure/reopen', {
+                month: selectedMonth.month,
+                year,
+                userId: user.id,
+                reason: reopenReason
             });
 
             if (response.ok) {

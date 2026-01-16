@@ -2,6 +2,7 @@ const express = require('express');
 const router = express.Router();
 const { PrismaClient } = require('@prisma/client');
 const prisma = new PrismaClient();
+const { buildTenantFilter } = require('../middleware/tenant.middleware');
 
 // GET /api/admin/members - Advanced List with Pagination/Filtering
 router.get('/members', async (req, res) => {
@@ -19,8 +20,9 @@ router.get('/members', async (req, res) => {
         const skip = (parseInt(page) - 1) * parseInt(limit);
         const take = parseInt(limit);
 
-        // Build Where Clause
-        const where = {};
+        // Build Where Clause with Tenant Filtering
+        const tenantFilter = buildTenantFilter(req);
+        const where = { ...tenantFilter };
 
         if (status && status !== 'ALL') {
             where.status = status;
@@ -32,7 +34,7 @@ router.get('/members', async (req, res) => {
 
         if (q) {
             where.OR = [
-                { profile: { fullName: { contains: q } } }, // SQLite is case-insensitive by default in many configs, but Prisma might need mode: 'insensitive' for Postgres/Mongo. For SQLite/MySQL generic, this is usually simplified.
+                { profile: { fullName: { contains: q } } },
                 { profile: { socialReason: { contains: q } } },
                 { profile: { cpf: { contains: q } } },
                 { profile: { cnpj: { contains: q } } },
@@ -43,16 +45,12 @@ router.get('/members', async (req, res) => {
         // Build OrderBy
         let orderBy = {};
         if (sortBy === 'name') {
-            // Sort by relational field needs specific structure or raw query, but simplified for single list:
-            // Prisma doesn't easily sort by relation prop at top level without specific syntax depending on version.
-            // Fallback: sort by createdAt if name sort is complex, or try basic relative sort.
-            // For simplicity in this iteration, let's stick to easy fields or handle name manually if needed (but manual break pagination).
-            // Let's assume sorting by main user fields or profile fields via relation syntax if supported.
-            // Attempting Relation Sort:
             orderBy = { profile: { fullName: order } };
         } else {
             orderBy = { [sortBy]: order };
         }
+
+        console.log('[MembersRoute] Tenant Filter:', tenantFilter, 'Where:', where);
 
         // Execute Query
         const [members, total] = await Promise.all([

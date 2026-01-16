@@ -13,6 +13,10 @@ app.use(cors());
 app.use(express.json());
 app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
 
+// Tenant Context Middleware - Extracts x-tenant-id header
+const { tenantMiddleware } = require('./middleware/tenant.middleware');
+app.use(tenantMiddleware);
+
 // Configure Multer for file uploads
 const storage = multer.diskStorage({
     destination: (req, file, cb) => {
@@ -230,6 +234,10 @@ app.use('/api/finance/closure', monthlyClosureRoutes);
 // SaaS Routes
 const saasRoutes = require('./routes/saas.routes');
 app.use('/api/saas', saasRoutes);
+
+// Auth Routes
+const authRoutes = require('./routes/auth.routes');
+app.use('/api/auth', authRoutes);
 
 // User Management Routes
 const userRoutes = require('./routes/users.routes');

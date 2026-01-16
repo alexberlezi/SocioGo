@@ -12,6 +12,7 @@ import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
 import toast from 'react-hot-toast';
 import MembershipCard from './MembershipCard';
+import api from '../utils/api';
 
 // --- Helper Hook: Click Outside ---
 const useClickOutside = (ref, handler) => {
@@ -314,7 +315,7 @@ const MembersList = () => {
                 ...(filters.type !== 'ALL' && { type: filters.type }),
             });
 
-            const response = await fetch(`http://localhost:3000/api/admin/members?${params}`);
+            const response = await api.get(`/api/admin/members?${params}`);
             if (response.ok) {
                 const result = await response.json();
                 setMembers(result.data);
@@ -332,7 +333,18 @@ const MembersList = () => {
         const timer = setTimeout(() => {
             fetchMembers(1);
         }, 500);
-        return () => clearTimeout(timer);
+
+        // Listen for tenant changes and auto-refresh
+        const handleTenantChange = () => {
+            setLoading(true);
+            fetchMembers(1);
+        };
+        window.addEventListener('tenantChanged', handleTenantChange);
+
+        return () => {
+            clearTimeout(timer);
+            window.removeEventListener('tenantChanged', handleTenantChange);
+        };
     }, [searchTerm, filters]);
 
     // Handlers
@@ -822,26 +834,26 @@ const MembersList = () => {
                                             )}
 
                                             {/* Fixed Column: Actions (Always visible) */}
-                                            <td className="px-6 py-4 text-right sticky right-0 bg-inherit z-10 w-32">
-                                                <div className="flex items-center justify-end gap-1">
+                                            <td className="px-6 py-4 text-right sticky right-0 bg-inherit z-10 w-40">
+                                                <div className="flex items-center justify-end gap-2">
                                                     <button
                                                         onClick={() => handleCardClick(member)}
                                                         title="Ver Carteirinha"
-                                                        className="p-1.5 text-purple-400 hover:text-purple-600 hover:bg-purple-50 dark:hover:bg-purple-900/20 rounded-full transition-colors"
+                                                        className="p-2 bg-purple-50 dark:bg-purple-900/20 text-purple-600 dark:text-purple-400 hover:bg-purple-100 dark:hover:bg-purple-900/40 rounded-lg transition-colors"
                                                     >
                                                         <FileText className="w-4 h-4" />
                                                     </button>
                                                     <button
                                                         onClick={() => navigate(`/admin/members/${member.id}/edit`)}
                                                         title="Editar"
-                                                        className="p-1.5 text-blue-400 hover:text-blue-600 hover:bg-blue-50 dark:hover:bg-blue-900/20 rounded-full transition-colors"
+                                                        className="p-2 bg-blue-50 dark:bg-blue-900/20 text-blue-600 dark:text-blue-400 hover:bg-blue-100 dark:hover:bg-blue-900/40 rounded-lg transition-colors"
                                                     >
                                                         <Edit className="w-4 h-4" />
                                                     </button>
                                                     <button
                                                         onClick={() => navigate(`/admin/financeiro/socio/${member.id}`)}
                                                         title="Ver Extrato Financeiro"
-                                                        className="p-1.5 text-green-400 hover:text-green-600 hover:bg-green-50 dark:hover:bg-green-900/20 rounded-full transition-colors"
+                                                        className="p-2 bg-green-50 dark:bg-green-900/20 text-green-600 dark:text-green-400 hover:bg-green-100 dark:hover:bg-green-900/40 rounded-lg transition-colors"
                                                     >
                                                         <CircleDollarSign className="w-4 h-4" />
                                                     </button>
@@ -849,7 +861,7 @@ const MembersList = () => {
                                                         <button
                                                             onClick={() => handleSuspendClick(member)}
                                                             title="Suspender"
-                                                            className="p-1.5 text-red-400 hover:text-red-600 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-full transition-colors"
+                                                            className="p-2 bg-yellow-50 dark:bg-yellow-900/20 text-yellow-600 dark:text-yellow-400 hover:bg-yellow-100 dark:hover:bg-yellow-900/40 rounded-lg transition-colors"
                                                         >
                                                             <Ban className="w-4 h-4" />
                                                         </button>
@@ -857,7 +869,7 @@ const MembersList = () => {
                                                         <button
                                                             title="Suspenso"
                                                             disabled
-                                                            className="p-1.5 text-gray-300 dark:text-gray-600 cursor-not-allowed rounded-full transition-colors"
+                                                            className="p-2 bg-gray-50 dark:bg-gray-800 text-gray-300 dark:text-gray-600 cursor-not-allowed rounded-lg"
                                                         >
                                                             <Ban className="w-4 h-4" />
                                                         </button>
@@ -868,7 +880,7 @@ const MembersList = () => {
                                                         <button
                                                             onClick={() => handleDeleteClick(member)}
                                                             title="Excluir Definitivamente"
-                                                            className="p-1.5 text-red-500 hover:text-red-700 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-full transition-colors"
+                                                            className="p-2 bg-red-50 dark:bg-red-900/20 text-red-600 dark:text-red-400 hover:bg-red-100 dark:hover:bg-red-900/40 rounded-lg transition-colors"
                                                         >
                                                             <Trash2 className="w-4 h-4" />
                                                         </button>
@@ -876,7 +888,7 @@ const MembersList = () => {
                                                         <button
                                                             title="Só é possível excluir sócios suspensos"
                                                             disabled
-                                                            className="p-1.5 text-gray-400 dark:text-gray-600 opacity-50 cursor-not-allowed rounded-full transition-colors"
+                                                            className="p-2 bg-gray-50 dark:bg-gray-800 text-gray-300 dark:text-gray-600 opacity-50 cursor-not-allowed rounded-lg"
                                                         >
                                                             <Trash2 className="w-4 h-4" />
                                                         </button>

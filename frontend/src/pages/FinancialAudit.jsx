@@ -14,6 +14,7 @@ import AdminLayout from '../components/layout/AdminLayout';
 import { toast } from 'react-hot-toast';
 import DatePicker from '../components/ui/DatePicker';
 import CustomSelect from '../components/ui/CustomSelect';
+import api from '../utils/api';
 
 // --- Custom Hook: Click Outside ---
 const useClickOutside = (ref, handler) => {
@@ -48,11 +49,19 @@ const FinancialAudit = () => {
         fetchLogs();
         fetchOperators();
         fetchCategories();
+
+        // Listen for tenant changes and auto-refresh
+        const handleTenantChange = () => {
+            setLoading(true);
+            fetchLogs();
+        };
+        window.addEventListener('tenantChanged', handleTenantChange);
+        return () => window.removeEventListener('tenantChanged', handleTenantChange);
     }, []);
 
     const fetchCategories = async () => {
         try {
-            const response = await fetch('http://localhost:3000/api/categories');
+            const response = await api.get('/api/categories');
             if (response.ok) {
                 const data = await response.json();
                 const catMap = data.reduce((acc, cat) => {
@@ -69,10 +78,18 @@ const FinancialAudit = () => {
     const fetchLogs = async () => {
         setLoading(true);
         try {
+            const user = JSON.parse(localStorage.getItem('user'));
+            const isGlobalAdmin = user?.role === 'GLOBAL_ADMIN' || user?.id === '875b818e-aa0d-40af-885a-f00202bbd03c';
+
             const params = new URLSearchParams();
             if (filters.startDate) params.append('startDate', filters.startDate);
             if (filters.endDate) params.append('endDate', filters.endDate);
             if (filters.userId) params.append('userId', filters.userId);
+
+            // SECURITY: Tenant Isolation - Non-global admins only see their association's logs
+            if (!isGlobalAdmin && user?.associationId) {
+                params.append('associationId', user.associationId);
+            }
 
             const response = await fetch(`http://localhost:3000/api/finance/logs?${params.toString()}`);
             if (response.ok) {

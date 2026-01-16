@@ -103,14 +103,14 @@ const DatePicker = ({ value, onChange, placeholder = "Selecione uma data" }) => 
             <button
                 type="button"
                 onClick={() => setIsOpen(!isOpen)}
-                className={`w-full h-12 px-4 flex items-center justify-between bg-slate-900/90 border transition-all rounded-xl text-sm font-medium outline-none ${isOpen
-                    ? 'border-blue-500 ring-2 ring-blue-500/20'
-                    : 'border-blue-500/30 hover:border-blue-500/50'
-                    } text-slate-200`}
+                className={`w-full h-12 px-4 flex items-center justify-between bg-gray-50 dark:bg-slate-900/90 border transition-all rounded-xl text-sm font-medium outline-none ${isOpen
+                        ? 'border-blue-500 ring-2 ring-blue-500/20'
+                        : 'border-gray-200 dark:border-blue-500/30 hover:border-blue-400 dark:hover:border-blue-500/50'
+                    } text-gray-800 dark:text-slate-200`}
             >
                 <div className="flex items-center gap-3">
-                    <Calendar className={`w-4 h-4 ${isOpen || value ? 'text-blue-500' : 'text-slate-500'}`} />
-                    <span className={value ? 'text-slate-200 font-semibold' : 'text-slate-500'}>
+                    <Calendar className={`w-4 h-4 ${isOpen || value ? 'text-blue-500' : 'text-gray-400 dark:text-slate-500'}`} />
+                    <span className={value ? 'text-gray-800 dark:text-slate-200 font-semibold' : 'text-gray-400 dark:text-slate-500'}>
                         {formatDateDisplay(value) || placeholder}
                     </span>
                 </div>
@@ -118,32 +118,32 @@ const DatePicker = ({ value, onChange, placeholder = "Selecione uma data" }) => 
                     {value && (
                         <div
                             onClick={handleClear}
-                            className="p-1 hover:bg-slate-800 rounded-full transition-colors group"
+                            className="p-1 hover:bg-gray-200 dark:hover:bg-slate-800 rounded-full transition-colors group"
                         >
-                            <X className="w-3.5 h-3.5 text-slate-500 group-hover:text-red-400" />
+                            <X className="w-3.5 h-3.5 text-gray-400 dark:text-slate-500 group-hover:text-red-400" />
                         </div>
                     )}
-                    <ChevronDown className={`w-4 h-4 text-slate-500 transition-transform duration-200 ${isOpen ? 'rotate-180' : ''}`} />
+                    <ChevronDown className={`w-4 h-4 text-gray-400 dark:text-slate-500 transition-transform duration-200 ${isOpen ? 'rotate-180' : ''}`} />
                 </div>
             </button>
 
             {isOpen && (
-                <div className="absolute top-full left-0 mt-2 z-50 w-72 bg-slate-900 border border-slate-800 rounded-xl shadow-2xl p-4 animate-in fade-in zoom-in-95 duration-100">
+                <div className="absolute top-full left-0 mt-2 z-50 w-72 bg-white dark:bg-slate-900 border border-gray-200 dark:border-slate-800 rounded-xl shadow-2xl p-4 animate-in fade-in zoom-in-95 duration-100">
                     <div className="flex items-center justify-between mb-4">
                         <button
                             type="button"
                             onClick={handlePrevMonth}
-                            className="p-1.5 hover:bg-slate-800 rounded-lg text-slate-400 hover:text-white transition-colors"
+                            className="p-1.5 hover:bg-gray-100 dark:hover:bg-slate-800 rounded-lg text-gray-500 dark:text-slate-400 hover:text-gray-900 dark:hover:text-white transition-colors"
                         >
                             <ChevronLeft className="w-4 h-4" />
                         </button>
-                        <span className="text-sm font-bold text-white uppercase tracking-wider">
+                        <span className="text-sm font-bold text-gray-900 dark:text-white uppercase tracking-wider">
                             {months[viewDate.getMonth()]} {viewDate.getFullYear()}
                         </span>
                         <button
                             type="button"
                             onClick={handleNextMonth}
-                            className="p-1.5 hover:bg-slate-800 rounded-lg text-slate-400 hover:text-white transition-colors"
+                            className="p-1.5 hover:bg-gray-100 dark:hover:bg-slate-800 rounded-lg text-gray-500 dark:text-slate-400 hover:text-gray-900 dark:hover:text-white transition-colors"
                         >
                             <ChevronRight className="w-4 h-4" />
                         </button>
@@ -151,7 +151,7 @@ const DatePicker = ({ value, onChange, placeholder = "Selecione uma data" }) => 
 
                     <div className="grid grid-cols-7 gap-1 mb-2">
                         {weekDays.map((day, i) => (
-                            <div key={i} className="h-8 flex items-center justify-center text-[10px] font-bold text-slate-500 uppercase">
+                            <div key={i} className="h-8 flex items-center justify-center text-[10px] font-bold text-gray-400 dark:text-slate-500 uppercase">
                                 {day}
                             </div>
                         ))}
@@ -168,8 +168,8 @@ const DatePicker = ({ value, onChange, placeholder = "Selecione uma data" }) => 
                                             ${isSelected(day)
                                                 ? 'bg-blue-600 text-white shadow-lg shadow-blue-600/20'
                                                 : isToday(day)
-                                                    ? 'text-blue-400 bg-blue-500/10'
-                                                    : 'text-slate-400 hover:bg-slate-800 hover:text-white'
+                                                    ? 'text-blue-600 dark:text-blue-400 bg-blue-50 dark:bg-blue-500/10'
+                                                    : 'text-gray-600 dark:text-slate-400 hover:bg-gray-100 dark:hover:bg-slate-800 hover:text-gray-900 dark:hover:text-white'
                                             }`}
                                     >
                                         {day}

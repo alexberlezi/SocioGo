@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import { useTenant } from '../../context/TenantContext';
 import {
     LayoutDashboard,
     UserCheck,
@@ -78,6 +79,7 @@ const Sidebar = () => {
     const location = useLocation();
     const [pendingCount, setPendingCount] = React.useState(0);
     const { features } = useFeatures();
+    const { activeTenant, isGlobalAdmin: isTenantAdmin } = useTenant();
 
     // Get user for Role Check
     const user = JSON.parse(localStorage.getItem('user'));
@@ -85,10 +87,9 @@ const Sidebar = () => {
     // Debug Role for migration
     console.log('[Sidebar] Current User Role:', user?.role, 'ID:', user?.id);
 
-    // Explicit Role Check: Broaden to catch 'Admin', 'admin', 'Administrator' OR Specific User UUID
-    // Matches GlobalAdminGuard logic
-    const isGlobalAdmin = user?.role?.toLowerCase().includes('admin') ||
-        String(user?.id) === '1' ||
+    // Strict Role Check: Only GLOBAL_ADMIN role gets elevated access
+    // SECURITY FIX: Removed broad 'admin' substring check to prevent ASSOCIATION_ADMIN access
+    const isGlobalAdmin = user?.role === 'GLOBAL_ADMIN' ||
         user?.id === '875b818e-aa0d-40af-885a-f00202bbd03c';
 
     console.log('[Sidebar] Debug - User:', user, 'isGlobalAdmin:', isGlobalAdmin);
@@ -120,13 +121,35 @@ const Sidebar = () => {
 
     return (
         <aside className="hidden lg:flex flex-col w-[280px] h-screen fixed left-0 top-0 bg-white dark:bg-slate-900 border-r border-gray-200 dark:border-slate-800 z-50 transition-colors duration-300">
-            {/* Logo Area */}
+            {/* Logo Area - Dynamic Branding Based on Selected Tenant */}
             <div className="h-20 flex items-center px-8 border-b border-gray-100 dark:border-slate-800/50">
-                <div className="flex items-center gap-2">
-                    <div className="w-8 h-8 bg-blue-600 rounded-lg flex items-center justify-center">
-                        <span className="text-white font-bold text-lg">S</span>
+                <div className="flex items-center gap-3">
+                    {activeTenant?.logoLight ? (
+                        <img
+                            src={activeTenant.logoLight.startsWith('http') ? activeTenant.logoLight : `http://localhost:3000${activeTenant.logoLight}`}
+                            alt={activeTenant.name}
+                            className="h-10 w-10 object-contain rounded-lg"
+                        />
+                    ) : (
+                        <div
+                            className="w-10 h-10 rounded-lg flex items-center justify-center"
+                            style={{ backgroundColor: activeTenant?.primaryColor || '#2563eb' }}
+                        >
+                            <span className="text-white font-bold text-lg">
+                                {activeTenant?.name?.[0] || 'S'}
+                            </span>
+                        </div>
+                    )}
+                    <div className="flex flex-col">
+                        <span className="text-lg font-bold text-gray-900 dark:text-white leading-tight">
+                            {activeTenant?.name || 'SocioGo'}
+                        </span>
+                        {activeTenant && (
+                            <span className="text-[10px] font-bold uppercase tracking-wider" style={{ color: activeTenant.primaryColor || '#2563eb' }}>
+                                Tenant Ativo
+                            </span>
+                        )}
                     </div>
-                    <span className="text-xl font-bold text-gray-900 dark:text-white">SocioGo</span>
                 </div>
             </div>
 
@@ -141,52 +164,50 @@ const Sidebar = () => {
                     active={location.pathname === '/admin'}
                 />
 
-                {/* Comunicação Collapsible */}
-                <CollapsibleNavItem
-                    icon={Megaphone}
-                    label="Comunicação"
-                    active={isActive('/admin/news') || isActive('/admin/polls')}
-                >
-                    <NavItem
-                        icon={Newspaper}
-                        label="Notícias"
-                        to="/admin/news"
-                        active={isActive('/admin/news')}
-                    />
-                    <NavItem
-                        icon={Vote}
-                        label="Pesquisas"
-                        to="/admin/polls"
-                        active={isActive('/admin/polls')}
-                    />
-                </CollapsibleNavItem>
+                {/* Comunicação Collapsible - Controlled by COMUNICACAO feature */}
+                {features.COMUNICACAO && (
+                    <CollapsibleNavItem
+                        icon={Megaphone}
+                        label="Comunicação"
+                        active={isActive('/admin/news') || isActive('/admin/polls')}
+                    >
+                        <NavItem
+                            icon={Newspaper}
+                            label="Notícias"
+                            to="/admin/news"
+                            active={isActive('/admin/news')}
+                        />
+                        <NavItem
+                            icon={Vote}
+                            label="Pesquisas"
+                            to="/admin/polls"
+                            active={isActive('/admin/polls')}
+                        />
+                    </CollapsibleNavItem>
+                )}
 
-                {/* Acessos Collapsible */}
-                <CollapsibleNavItem
-                    icon={Users}
-                    label="Acessos"
-                    active={isActive('/admin/approvals') || isActive('/admin/members') || isActive('/admin/profiles')}
-                >
-                    <NavItem
-                        icon={UserCheck}
-                        label="Aprovação"
-                        to="/admin/approvals"
-                        badge={pendingCount > 0 ? pendingCount.toString() : null}
-                        active={isActive('/admin/approvals')}
-                    />
-                    <NavItem
+                {/* Acessos Collapsible - Controlled by ACESSOS feature */}
+                {features.ACESSOS && (
+                    <CollapsibleNavItem
                         icon={Users}
-                        label="Sócios"
-                        to="/admin/members"
-                        active={isActive('/admin/members')}
-                    />
-                    <NavItem
-                        icon={Shield}
-                        label="Perfis"
-                        to="/admin/profiles"
-                        active={isActive('/admin/profiles')}
-                    />
-                </CollapsibleNavItem>
+                        label="Acessos"
+                        active={isActive('/admin/approvals') || isActive('/admin/members') || isActive('/admin/profiles')}
+                    >
+                        <NavItem
+                            icon={UserCheck}
+                            label="Aprovação"
+                            to="/admin/approvals"
+                            badge={pendingCount > 0 ? pendingCount.toString() : null}
+                            active={isActive('/admin/approvals')}
+                        />
+                        <NavItem
+                            icon={Users}
+                            label="Sócios"
+                            to="/admin/members"
+                            active={isActive('/admin/members')}
+                        />
+                    </CollapsibleNavItem>
+                )}
 
 
                 <div className="px-4 mt-8 mb-2 text-xs font-semibold text-gray-400 uppercase tracking-wider">Gestão</div>
@@ -224,11 +245,14 @@ const Sidebar = () => {
                     </>
                 )}
 
-                <NavItem
-                    icon={Calendar}
-                    label="Eventos"
-                    to="/admin/events"
-                />
+                {features.EVENTOS && (
+                    <NavItem
+                        icon={Calendar}
+                        label="Eventos"
+                        to="/admin/events"
+                        active={isActive('/admin/events')}
+                    />
+                )}
 
                 <NavItem
                     icon={Settings}
@@ -292,7 +316,16 @@ const Sidebar = () => {
 
             {/* User Profile / Logout */}
             <div className="p-4 border-t border-gray-100 dark:border-slate-800">
-                <button className="flex items-center gap-3 w-full px-4 py-3 rounded-xl text-gray-600 dark:text-gray-400 hover:bg-red-50 dark:hover:bg-red-900/10 hover:text-red-600 dark:hover:text-red-400 transition-colors">
+                <button
+                    onClick={() => {
+                        // SECURITY: Clear all user data from cache
+                        localStorage.removeItem('user');
+                        localStorage.removeItem('token');
+                        // Redirect to Login
+                        window.location.href = '/login';
+                    }}
+                    className="flex items-center gap-3 w-full px-4 py-3 rounded-xl text-gray-600 dark:text-gray-400 hover:bg-red-50 dark:hover:bg-red-900/10 hover:text-red-600 dark:hover:text-red-400 transition-colors"
+                >
                     <LogOut className="w-5 h-5" />
                     <span className="font-medium text-sm">Sair do Sistema</span>
                 </button>

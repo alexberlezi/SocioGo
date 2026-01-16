@@ -1,5 +1,6 @@
 const express = require('express');
 const router = express.Router();
+const { buildTenantFilter } = require('../middleware/tenant.middleware');
 const { PrismaClient } = require('@prisma/client');
 const prisma = new PrismaClient();
 
@@ -8,7 +9,8 @@ router.get('/', async (req, res) => {
     try {
         const { startDate, endDate, userId } = req.query;
 
-        const where = {};
+        // Start with tenant filter
+        const where = buildTenantFilter(req);
 
         if (startDate || endDate) {
             where.timestamp = {};

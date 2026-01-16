@@ -20,6 +20,16 @@ export const FEATURES = {
         label: 'Portal: Votações',
         description: 'Habilita assembleias virtuais, enquetes e pesquisas.'
     },
+    COMUNICACAO: {
+        key: 'COMUNICACAO',
+        label: 'Comunicação',
+        description: 'Gestão de notícias, enquetes e comunicados para sócios.'
+    },
+    ACESSOS: {
+        key: 'ACESSOS',
+        label: 'Gestão de Acessos',
+        description: 'Aprovação de sócios, gestão de membros e perfis de acesso.'
+    },
     FINANCEIRO_ADM: {
         key: 'FINANCEIRO_ADM',
         label: 'Módulo Financeiro (Adm)',
@@ -29,6 +39,11 @@ export const FEATURES = {
         key: 'AUDITORIA',
         label: 'Auditoria e Logs',
         description: 'Trilha de segurança completa registrando todas as ações do sistema.'
+    },
+    EVENTOS: {
+        key: 'EVENTOS',
+        label: 'Eventos',
+        description: 'Gestão de eventos, calendário e inscrições para sócios.'
     },
     COMUNICACAO_ZAP: {
         key: 'COMUNICACAO_ZAP',
@@ -40,5 +55,5 @@ export const FEATURES = {
 export const FEATURE_GROUPS = {
     CANAIS: [FEATURES.SITE, FEATURES.PORTAL_SOCIO],
     PORTAL: [FEATURES.PORTAL_FINANCEIRO, FEATURES.PORTAL_VOTACOES],
-    FERRAMENTAS: [FEATURES.FINANCEIRO_ADM, FEATURES.AUDITORIA, FEATURES.COMUNICACAO_ZAP]
+    FERRAMENTAS: [FEATURES.COMUNICACAO, FEATURES.ACESSOS, FEATURES.FINANCEIRO_ADM, FEATURES.EVENTOS, FEATURES.AUDITORIA, FEATURES.COMUNICACAO_ZAP]
 };

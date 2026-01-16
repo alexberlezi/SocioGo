@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Search, Plus, MapPin, Building2, Phone, Mail, Globe, CheckCircle, XCircle, Pencil, Trash2, AlertTriangle, Moon, Sun, Users, Activity } from 'lucide-react';
+import { Search, Plus, MapPin, Building2, Phone, Mail, Globe, CheckCircle, XCircle, Pencil, Trash2, AlertTriangle, Moon, Sun, Users, Activity, Server } from 'lucide-react';
 import AdminLayout from '../components/layout/AdminLayout';
 import { toast } from 'react-hot-toast';
 
@@ -297,6 +297,30 @@ const CompanyManagement = () => {
                                         {company.totalUsers || 0}
                                     </span>
                                 </div>
+                            </div>
+
+                            {/* SaaS Modules Link */}
+                            <div className="mt-4 pt-4 border-t border-slate-100 dark:border-slate-800">
+                                <a
+                                    href={`/admin/saas?companyId=${company.id}`}
+                                    className="w-full flex items-center justify-between p-2 rounded-lg bg-slate-50 hover:bg-purple-50 dark:bg-slate-800 dark:hover:bg-purple-900/20 transition-colors group/saas"
+                                >
+                                    <div className="flex items-center gap-2">
+                                        <div className="p-1.5 bg-white dark:bg-slate-700 rounded-md shadow-sm">
+                                            <Server className="w-4 h-4 text-purple-600 dark:text-purple-400" />
+                                        </div>
+                                        <span className="text-xs font-bold text-slate-600 dark:text-slate-300 group-hover/saas:text-purple-600 transition-colors">
+                                            Módulos Ativos
+                                        </span>
+                                    </div>
+                                    <div className="flex -space-x-1">
+                                        {/* Simple visualization of active modules count or generic dots */}
+                                        {company.activeModules && company.activeModules.FINANCEIRO_ADM && <div title="Financeiro" className="w-2 h-2 rounded-full bg-emerald-500 border border-white dark:border-slate-800"></div>}
+                                        {company.activeModules && company.activeModules.AUDITORIA && <div title="Auditoria" className="w-2 h-2 rounded-full bg-orange-500 border border-white dark:border-slate-800"></div>}
+                                        {company.activeModules && company.activeModules.PORTAL_SOCIO && <div title="Portal Sócio" className="w-2 h-2 rounded-full bg-blue-500 border border-white dark:border-slate-800"></div>}
+                                        {(!company.activeModules) && <span className="text-[10px] text-slate-400">Padrão</span>}
+                                    </div>
+                                </a>
                             </div>
 
                             {/* Footer Info */}

@@ -24,6 +24,7 @@ import {
 } from 'lucide-react';
 import AdminLayout from '../components/layout/AdminLayout';
 import { toast } from 'react-hot-toast';
+import api from '../utils/api';
 
 // --- Custom Hook: Click Outside ---
 const useClickOutside = (ref, handler) => {
@@ -88,7 +89,7 @@ const CashFlow = () => {
                 ? filters.dateRange.start
                 : new Date().toISOString().split('T')[0];
 
-            const response = await fetch(`http://localhost:3000/api/finance/closure/check?date=${date}`);
+            const response = await api.get(`/api/finance/closure/check?date=${date}`);
             if (response.ok) {
                 const data = await response.json();
                 setMonthStatus(data.status);
@@ -103,13 +104,22 @@ const CashFlow = () => {
     }, [filters.dateRange]); // Re-check when date filters change
 
     useEffect(() => {
-        fetchCashFlow(); // Renamed from fetchTransactions to match existing function
+        fetchCashFlow();
         fetchCategories();
+
+        // Listen for tenant changes and auto-refresh
+        const handleTenantChange = () => {
+            setLoading(true);
+            fetchCashFlow();
+            fetchCategories();
+        };
+        window.addEventListener('tenantChanged', handleTenantChange);
+        return () => window.removeEventListener('tenantChanged', handleTenantChange);
     }, [filters]);
 
     const fetchCategories = async () => {
         try {
-            const response = await fetch('http://localhost:3000/api/categories');
+            const response = await api.get('/api/categories');
             if (response.ok) {
                 const result = await response.json();
                 setCategories(result);
@@ -121,7 +131,7 @@ const CashFlow = () => {
 
     const fetchCashFlow = async () => {
         try {
-            const response = await fetch('http://localhost:3000/api/cashflow');
+            const response = await api.get('/api/cashflow');
             if (response.ok) {
                 const result = await response.json();
                 setData(result);

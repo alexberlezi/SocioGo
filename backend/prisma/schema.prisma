@@ -16,6 +16,7 @@ model User {
   status    UserStatus @default(PENDING)
   
   mfaEnabled Boolean   @default(false)
+  mfaSecret  String?   // TOTP Secret
   lastLogin  DateTime?
   
   associationId Int?   // Tenant ID
@@ -79,11 +80,16 @@ model Association {
 
   // System
   activeModules Json? // Custom modules config per association
+  settings      Json? // Custom settings (e.g., suspensionGracePeriod)
 
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
   
-  users       User[]
+  // Relations
+  users        User[]
+  cashFlows    CashFlowEntry[] @relation("CashFlowAssociation")
+  logs         FinancialLog[]  @relation("LogAssociation")
+  categories   Category[]      @relation("CategoryAssociation")
 }
 
 // 2. Profile
@@ -267,6 +273,9 @@ model CashFlowEntry {
   operatorId  Int?         // Usuário que realizou o lançamento
   operatorName String?     // Nome do operador no momento do lançamento
 
+  associationId Int?       // Tenant ID
+  association   Association? @relation("CashFlowAssociation", fields: [associationId], references: [id])
+
   createdAt   DateTime     @default(now())
   updatedAt   DateTime     @updatedAt
 }
@@ -283,6 +292,9 @@ model FinancialLog {
   newValue    Json?    // Valores novos (para UPDATES/CREATES)
   description String?  // Descrição amigável da ação
 
+  associationId Int?   // Tenant ID
+  association   Association? @relation("LogAssociation", fields: [associationId], references: [id])
+
   @@index([timestamp])
 }
 
@@ -293,6 +305,9 @@ model Category {
   type      CashFlowType // IN or OUT
   entries   CashFlowEntry[]
   
+  associationId Int?     // Tenant ID
+  association   Association? @relation("CategoryAssociation", fields: [associationId], references: [id])
+
   createdAt DateTime     @default(now())
   updatedAt DateTime     @updatedAt
 }

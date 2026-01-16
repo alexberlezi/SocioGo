@@ -1,35 +1,65 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import AdminLayout from '../components/layout/AdminLayout';
 import { Save, AlertCircle } from 'lucide-react';
-import toast from 'react-hot-toast';
+import { toast } from 'react-hot-toast';
+import api from '../utils/api';
 
 const AssociationSettings = () => {
     const [settings, setSettings] = useState({
         suspensionGracePeriod: 3 // Default value
     });
+    const [loading, setLoading] = useState(true);
+
+    const fetchSettings = async () => {
+        setLoading(true);
+        try {
+            const response = await api.get('/api/companies/settings');
+            if (response.ok) {
+                const data = await response.json();
+                setSettings(data);
+            }
+        } catch (error) {
+            console.error('Error fetching settings:', error);
+            // toast.error('Erro ao carregar configurações');
+        } finally {
+            setLoading(false);
+        }
+    };
+
+    useEffect(() => {
+        fetchSettings();
+
+        // Listen for tenant changes
+        const handleTenantChange = () => {
+            fetchSettings();
+        };
+        window.addEventListener('tenantChanged', handleTenantChange);
+        return () => window.removeEventListener('tenantChanged', handleTenantChange);
+    }, []);
 
     const handleChange = (e) => {
         const { name, value } = e.target;
         setSettings(prev => ({
             ...prev,
-            [name]: value
+            [name]: name === 'suspensionGracePeriod' ? parseInt(value) || 0 : value
         }));
     };
 
-    const handleSave = (e) => {
+    const handleSave = async (e) => {
         e.preventDefault();
-        // Here we would typically save to backend
-        // For now, we simulate a save
-        console.log('Saving settings:', settings);
 
-        toast.promise(
-            new Promise(resolve => setTimeout(resolve, 1000)),
-            {
-                loading: 'Salvando configurações...',
-                success: 'Configurações atualizadas com sucesso!',
-                error: 'Erro ao salvar.'
+        try {
+            const response = await api.put('/api/companies/settings', settings);
+            if (response.ok) {
+                toast.success('Configurações atualizadas com sucesso!');
+            } else {
+                const err = await response.json();
+                toast.error(err.error || 'Erro ao salvar.');
             }
-        );
+        } catch (error) {
+            console.error('Error saving settings:', error);
+            toast.error('Erro de conexão ao salvar.');
+        }
     };
 
     return (

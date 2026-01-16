@@ -1,12 +1,16 @@
 const express = require('express');
 const router = express.Router();
+const { buildTenantFilter } = require('../middleware/tenant.middleware');
 const { PrismaClient } = require('@prisma/client');
 const prisma = new PrismaClient();
 
 // GET /api/categories - List all categories
 router.get('/', async (req, res) => {
     try {
+        const where = buildTenantFilter(req);
+
         const categories = await prisma.category.findMany({
+            where,
             orderBy: { name: 'asc' }
         });
         res.json(categories);
@@ -24,7 +28,12 @@ router.post('/', async (req, res) => {
             return res.status(400).json({ error: 'Todos os campos são obrigatórios' });
         }
         const category = await prisma.category.create({
-            data: { name, color, type }
+            data: {
+                name,
+                color,
+                type,
+                associationId: req.tenantId
+            }
         });
         res.status(201).json(category);
     } catch (error) {

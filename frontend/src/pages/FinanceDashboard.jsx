@@ -29,6 +29,7 @@ import {
     Cell
 } from 'recharts';
 import AdminLayout from '../components/layout/AdminLayout';
+import api from '../utils/api';
 
 const FinanceDashboard = () => {
     const [loading, setLoading] = useState(true);
@@ -36,11 +37,19 @@ const FinanceDashboard = () => {
 
     useEffect(() => {
         fetchDashboardData();
+
+        // Listen for tenant changes and auto-refresh
+        const handleTenantChange = () => {
+            setLoading(true);
+            fetchDashboardData();
+        };
+        window.addEventListener('tenantChanged', handleTenantChange);
+        return () => window.removeEventListener('tenantChanged', handleTenantChange);
     }, []);
 
     const fetchDashboardData = async () => {
         try {
-            const response = await fetch('http://localhost:3000/api/finance/dashboard');
+            const response = await api.get('/api/finance/dashboard');
             if (response.ok) {
                 const result = await response.json();
                 setData(result);

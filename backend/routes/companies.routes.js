@@ -35,6 +35,79 @@ const checkGlobalAdmin = async (userId) => {
     }
 };
 
+// GET /api/companies/settings - Get settings for current tenant
+router.get('/settings', async (req, res) => {
+    try {
+        // If global admin and no specific tenant header, this might be ambiguous or blank.
+        // But usually this page is loaded WITH a tenant context.
+        // If req.tenantId is null (Global view), return empty or error?
+        // AssociationSettings page expects settings.
+
+        if (!req.tenantId) {
+            return res.status(400).json({ error: 'Nenhuma associação selecionada.' });
+        }
+
+        const association = await prisma.association.findUnique({
+            where: { id: req.tenantId },
+            select: { settings: true }
+        });
+
+        if (!association) {
+            return res.status(404).json({ error: 'Associação não encontrada.' });
+        }
+
+        // Return parsed settings or default
+        const defaultSettings = { suspensionGracePeriod: 3 };
+        const currentSettings = association.settings ? (typeof association.settings === 'string' ? JSON.parse(association.settings) : association.settings) : {};
+
+        res.json({ ...defaultSettings, ...currentSettings });
+    } catch (error) {
+        console.error('Error fetching settings:', error);
+        res.status(500).json({ error: 'Erro ao buscar configurações.' });
+    }
+});
+
+// PUT /api/companies/settings - Update settings for current tenant
+router.put('/settings', async (req, res) => {
+    try {
+        if (!req.tenantId) {
+            return res.status(400).json({ error: 'Nenhuma associação selecionada.' });
+        }
+
+        const { suspensionGracePeriod } = req.body;
+
+        // Validate
+        if (typeof suspensionGracePeriod !== 'number' || suspensionGracePeriod < 1) {
+            return res.status(400).json({ error: 'Período de carência inválido.' });
+        }
+
+        // Merge with existing settings
+        const association = await prisma.association.findUnique({
+            where: { id: req.tenantId },
+            select: { settings: true }
+        });
+
+        const currentSettings = association.settings ? (typeof association.settings === 'string' ? JSON.parse(association.settings) : association.settings) : {};
+        const newSettings = {
+            ...currentSettings,
+            suspensionGracePeriod
+        };
+
+        await prisma.association.update({
+            where: { id: req.tenantId },
+            data: {
+                settings: newSettings
+            }
+        });
+
+        res.json({ message: 'Configurações atualizadas!', settings: newSettings });
+
+    } catch (error) {
+        console.error('Error updating settings:', error);
+        res.status(500).json({ error: 'Erro ao salvar configurações.' });
+    }
+});
+
 // GET /api/companies - List all associations with metrics
 router.get('/', async (req, res) => {
     try {

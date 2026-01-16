@@ -8,7 +8,10 @@ const GlobalAdminGuard = ({ children }) => {
     console.log('[GlobalAdminGuard] Checking Access for:', user);
 
     // Permissive Check: Allow 'Admin', 'admin', 'Administrator', 'Global Admin', etc. OR User ID 1 OR Specific UUID
-    const canAccess = user?.role?.toLowerCase().includes('admin') ||
+    // Permissive Check: Allow 'Admin', 'admin', 'Administrator', 'Global Admin', etc. OR User ID 1 OR Specific UUID
+    const role = user?.role?.toLowerCase() || '';
+    const canAccess = role.includes('admin') ||
+        role === 'global_admin' ||
         String(user?.id) === '1' ||
         user?.id === '875b818e-aa0d-40af-885a-f00202bbd03c';
 

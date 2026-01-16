@@ -3,6 +3,7 @@ import { Search, Plus, Filter, Shield, User, Lock, MoreHorizontal, CheckCircle, 
 import AdminLayout from '../components/layout/AdminLayout';
 import CustomSelect from '../components/ui/CustomSelect';
 import { toast } from 'react-hot-toast';
+import api from '../utils/api';
 
 const UserManagement = () => {
     const [users, setUsers] = useState([]);
@@ -63,13 +64,30 @@ const UserManagement = () => {
     useEffect(() => {
         fetchUsers();
         fetchAssociations();
+
+        // Listen for tenant changes and auto-refresh
+        const handleTenantChange = () => {
+            setLoading(true);
+            fetchUsers();
+        };
+        window.addEventListener('tenantChanged', handleTenantChange);
+        return () => window.removeEventListener('tenantChanged', handleTenantChange);
     }, []);
 
     const fetchUsers = async () => {
         try {
-            const res = await fetch('http://localhost:3000/api/users');
+            const res = await api.get('/api/users');
             if (res.ok) {
-                const data = await res.json();
+                let data = await res.json();
+
+                // SECURITY: Tenant Isolation for ASSOCIATION_ADMIN
+                if (!isGlobalAdmin && currentUser?.associationId) {
+                    data = data.filter(u =>
+                        u.associationId === currentUser.associationId &&
+                        u.role !== 'GLOBAL_ADMIN' // Never show GLOBAL_ADMIN to local admins
+                    );
+                }
+
                 setUsers(data);
             }
         } catch (error) {
@@ -82,7 +100,7 @@ const UserManagement = () => {
 
     const fetchAssociations = async () => {
         try {
-            const res = await fetch('http://localhost:3000/api/companies');
+            const res = await api.get('/api/companies');
             if (res.ok) {
                 const data = await res.json();
                 console.log('Empresas carregadas:', data);

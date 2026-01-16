@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Server, Save, CheckCircle, Shield, AlertTriangle } from 'lucide-react';
+import { Server, Save, CheckCircle, Shield, AlertTriangle, Building2 } from 'lucide-react';
 import AdminLayout from '../components/layout/AdminLayout';
 import { useFeatures } from '../components/auth/FeatureGuard';
 import { FEATURE_GROUPS } from '../config/features.config';
@@ -9,19 +9,69 @@ const SaasManagement = () => {
     const [features, setFeatures] = useState({});
     const [loading, setLoading] = useState(true);
     const [saving, setSaving] = useState(false);
+    const [companyName, setCompanyName] = useState('Global');
+
+    // Read Company ID from URL
+    const queryParams = new URLSearchParams(window.location.search);
+    const companyId = queryParams.get('companyId');
+
     const user = JSON.parse(localStorage.getItem('user'));
 
-    useEffect(() => {
-        fetchFeatures();
-    }, []);
+    // SECURITY: Check if user is Global Admin
+    const isGlobalAdmin = user?.role === 'GLOBAL_ADMIN' || user?.id === '875b818e-aa0d-40af-885a-f00202bbd03c';
 
-    const fetchFeatures = async () => {
+    // SECURITY: Block non-global admins from accessing global SaaS settings
+    // They should only land here via /admin/saas?companyId=X where X is their own association
+    if (!isGlobalAdmin && !companyId) {
+        return (
+            <AdminLayout>
+                <div className="flex h-[70vh] items-center justify-center text-white flex-col gap-4">
+                    <Shield className="w-16 h-16 text-red-500/50" />
+                    <h1 className="text-3xl font-black">Acesso Negado</h1>
+                    <p className="text-slate-400 max-w-md text-center">Você não tem permissão para acessar as configurações globais de SaaS. Contate o administrador global.</p>
+                    <button onClick={() => window.history.back()} className="mt-4 px-6 py-2 bg-blue-600 rounded-lg font-bold hover:bg-blue-700 transition-colors">Voltar</button>
+                </div>
+            </AdminLayout>
+        );
+    }
+
+    useEffect(() => {
+        fetchData();
+    }, [companyId]);
+
+    const fetchData = async () => {
+        setLoading(true);
         try {
-            const res = await fetch('http://localhost:3000/api/saas/features');
-            if (res.ok) {
-                const data = await res.json();
+            // 1. Fetch Features (Global or Tenant)
+            const url = companyId
+                ? `http://localhost:3000/api/saas/features?companyId=${companyId}`
+                : 'http://localhost:3000/api/saas/features';
+
+            const resFeatures = await fetch(url);
+            if (resFeatures.ok) {
+                const data = await resFeatures.json();
                 setFeatures(data);
             }
+
+            // 2. If Tenant, Fetch Company Name for Header
+            if (companyId) {
+                // Try fetching from companies list if individual endpoint not ready or just reuse find
+                // Assuming companies endpoint exposes list or detailed view. 
+                // Let's use the list for now or assume we passed name? No, safe to fetch list and find.
+                // Or better, fetch company details route if available. 
+                // We don't have GET /companies/:id officially exposed as detailed in routes snippet before (only POST/PUT/DELETE return/act on it).
+                // Actually, the PUT route returns it. 
+                // Let's just fetch all and find, or generic.
+                const resCompanies = await fetch('http://localhost:3000/api/companies');
+                if (resCompanies.ok) {
+                    const companies = await resCompanies.json();
+                    const current = companies.find(c => c.id === parseInt(companyId));
+                    if (current) setCompanyName(current.name);
+                }
+            } else {
+                setCompanyName('Global (Landing Page)');
+            }
+
         } catch (error) {
             console.error(error);
             toast.error('Erro ao carregar configurações');
@@ -40,15 +90,18 @@ const SaasManagement = () => {
     const handleSave = async () => {
         setSaving(true);
         try {
+            const body = { userId: user.id, features };
+            if (companyId) body.companyId = companyId;
+
             const res = await fetch('http://localhost:3000/api/saas/features', {
                 method: 'PUT',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ userId: user.id, features })
+                body: JSON.stringify(body)
             });
 
             if (res.ok) {
                 toast.success('Funcionalidades atualizadas com sucesso!');
-                setTimeout(() => window.location.reload(), 1000);
+                // Don't reload, just confirmation is enough
             } else {
                 toast.error('Erro ao salvar. Verifique permissões.');
             }
@@ -71,8 +124,8 @@ const SaasManagement = () => {
                             <Server className="w-8 h-8 text-blue-600" />
                             Gestão de Módulos (SaaS)
                         </h1>
-                        <p className="text-gray-500 dark:text-gray-400 text-sm font-medium mt-1">
-                            Controle de licenciamento e features ativas.
+                        <p className="text-gray-500 dark:text-gray-400 text-sm font-medium mt-1 flex items-center gap-2">
+                            Contexto: <strong className="text-blue-600 flex items-center gap-1"><Building2 className="w-3 h-3" /> {companyName}</strong>
                         </p>
                     </div>
 
@@ -130,7 +183,9 @@ const SaasManagement = () => {
                     <div>
                         <h4 className="text-yellow-500 font-bold text-base mb-1">Atenção Admin</h4>
                         <p className="text-yellow-500/80 text-sm leading-relaxed">
-                            Desativar módulos críticos (como Site ou Portal) removerá **instantaneamente** o acesso para todos os usuários e ocultará os menus relacionados.
+                            {companyId
+                                ? `Alterações aqui afetam APENAS a associação ${companyName}. Desativar módulos remove acesso imediato dos usuários desta unidade.`
+                                : "Alterações aqui afetam as configurações GERAIS (Padrão para novos tenants)."}
                         </p>
                     </div>
                 </div>
