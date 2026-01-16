@@ -4,6 +4,8 @@ import {
     UserCheck,
     Users,
     DollarSign,
+    Wallet,
+    Tags,
     Calendar,
     Settings,
     LogOut
@@ -98,6 +100,18 @@ const Sidebar = () => {
                     label="Financeiro"
                     to="/admin/financeiro"
                     active={isActive('/admin/financeiro')}
+                />
+                <NavItem
+                    icon={Wallet}
+                    label="Fluxo de Caixa"
+                    to="/admin/fluxo-caixa"
+                    active={isActive('/admin/fluxo-caixa')}
+                />
+                <NavItem
+                    icon={Tags}
+                    label="Categorias"
+                    to="/admin/financeiro/categorias"
+                    active={isActive('/admin/financeiro/categorias')}
                 />
                 <NavItem
                     icon={Calendar}

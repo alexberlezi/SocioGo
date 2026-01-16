@@ -213,6 +213,14 @@ app.use('/api/admin', memberRoutes);
 const financeRoutes = require('./routes/finance.routes');
 app.use('/api/finance', financeRoutes);
 
+// CashFlow Routes
+const cashFlowRoutes = require('./routes/cashflow.routes');
+app.use('/api/cashflow', cashFlowRoutes);
+
+// Categories Routes
+const categoryRoutes = require('./routes/categories.routes');
+app.use('/api/categories', categoryRoutes);
+
 const PORT = process.env.PORT || 3000;
 app.listen(PORT, () => {
     console.log(`Server running on port ${PORT}`);

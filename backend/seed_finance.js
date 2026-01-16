@@ -2,28 +2,68 @@ const { PrismaClient } = require('@prisma/client');
 const prisma = new PrismaClient();
 
 async function main() {
-    console.log('Starting finance seeding...');
+    console.log('Starting full system seeding...');
 
-    // 1. Clear existing financial records (optional, but good for clean seed)
+    // 1. Clear everything
     await prisma.financialRecord.deleteMany({});
+    await prisma.cashFlowEntry.deleteMany({});
+    await prisma.category.deleteMany({});
+    await prisma.profile.deleteMany({});
+    await prisma.user.deleteMany({});
 
     const now = new Date();
 
-    // 2. Alex Berlezi (ID 1)
-    console.log('Seeding Alex Berlezi (ID 1)...');
+    // 2. Create Admin User
+    console.log('Creating Admin User...');
+    const admin = await prisma.user.create({
+        data: {
+            email: 'admin@sociogo.com',
+            password: 'mudar123',
+            role: 'ADMIN',
+            status: 'APPROVED',
+            profile: {
+                create: {
+                    fullName: 'Admin User',
+                    type: 'PF',
+                    phone: '55999999999'
+                }
+            }
+        }
+    });
 
+    // 3. Create Alex Berlezi (Socio)
+    console.log('Creating Alex Berlezi...');
+    const alex = await prisma.user.create({
+        data: {
+            email: 'a@a.com.br',
+            password: 'mudar123',
+            role: 'SOCIO',
+            status: 'APPROVED',
+            profile: {
+                create: {
+                    fullName: 'Alex Berlezi',
+                    type: 'PF',
+                    cpf: '01769165045',
+                    phone: '55996191715',
+                }
+            }
+        }
+    });
+
+    // 4. Seed Alex's Financial History
+    console.log('Seeding Alex Berlezi History...');
     // 10 Paid Months
     for (let i = 11; i >= 2; i--) {
         const dueDate = new Date(now.getFullYear(), now.getMonth() - i, 10);
         await prisma.financialRecord.create({
             data: {
-                userId: 1,
+                userId: alex.id,
                 type: 'MENSALIDADE',
                 description: `Mensalidade ${dueDate.toLocaleDateString('pt-BR', { month: 'long', year: 'numeric' })}`,
                 amount: 150.00,
                 dueDate: dueDate,
                 status: 'PAID',
-                updatedAt: new Date(dueDate.getFullYear(), dueDate.getMonth(), 15) // Paid 5 days later
+                updatedAt: new Date(dueDate.getFullYear(), dueDate.getMonth(), 15)
             }
         });
     }
@@ -33,7 +73,7 @@ async function main() {
         const dueDate = new Date(now.getFullYear(), now.getMonth() - i, 10);
         await prisma.financialRecord.create({
             data: {
-                userId: 1,
+                userId: alex.id,
                 type: 'MENSALIDADE',
                 description: `Mensalidade ${dueDate.toLocaleDateString('pt-BR', { month: 'long', year: 'numeric' })}`,
                 amount: 150.00,
@@ -43,7 +83,7 @@ async function main() {
         });
     }
 
-    // 3. Create 5 other members
+    // 5. Create 5 other members
     const otherMembers = [
         { name: 'Ricardo Santos', email: 'ricardo@test.com', status: 'PAID', amount: 200 },
         { name: 'Mariana Lima', email: 'mariana@test.com', status: 'OVERDUE', amount: 150 },
@@ -53,15 +93,10 @@ async function main() {
     ];
 
     for (const m of otherMembers) {
-        console.log(`Seeding member: ${m.name}...`);
-
-        // Upsert user to avoid duplicates if re-run
-        const user = await prisma.user.upsert({
-            where: { email: m.email },
-            update: {},
-            create: {
+        const user = await prisma.user.create({
+            data: {
                 email: m.email,
-                password: 'hashed_password', // Mock password
+                password: 'mudar123',
                 role: 'SOCIO',
                 status: 'APPROVED',
                 profile: {
@@ -74,7 +109,7 @@ async function main() {
             }
         });
 
-        const dueDate = new Date(now.getFullYear(), now.getMonth(), 5); // Current month
+        const dueDate = new Date(now.getFullYear(), now.getMonth(), 5);
         await prisma.financialRecord.create({
             data: {
                 userId: user.id,
@@ -88,7 +123,38 @@ async function main() {
         });
     }
 
-    console.log('Finance seeding completed successfully!');
+    // 6. Seed Categories
+    console.log('Seeding Categories...');
+    const catData = [
+        { name: 'Administrativo', color: '#6366f1', type: 'OUT' },
+        { name: 'Marketing', color: '#ec4899', type: 'IN' },
+        { name: 'Eventos', color: '#f59e0b', type: 'IN' },
+        { name: 'Infraestrutura', color: '#10b981', type: 'OUT' },
+        { name: 'Outros', color: '#94a3b8', type: 'OUT' }
+    ];
+
+    const categories = {};
+    for (const c of catData) {
+        const created = await prisma.category.create({ data: c });
+        categories[c.name] = created.id;
+    }
+
+    // 7. Seed Cash Flow Entries
+    console.log('Seeding Cash Flow entries...');
+    const cashEvents = [
+        { description: 'Patrocínio Evento A', amount: 5000, type: 'IN', categoryId: categories['Marketing'], date: new Date(now.getFullYear(), now.getMonth(), 5) },
+        { description: 'Aluguel Sede', amount: 1200, type: 'OUT', categoryId: categories['Administrativo'], date: new Date(now.getFullYear(), now.getMonth(), 1) },
+        { description: 'Manutenção Ar Condicionado', amount: 450, type: 'OUT', categoryId: categories['Infraestrutura'], date: new Date(now.getFullYear(), now.getMonth(), 10) },
+        { description: 'Venda de Convites Estra', amount: 800, type: 'IN', categoryId: categories['Eventos'], date: new Date(now.getFullYear(), now.getMonth(), 12) }
+    ];
+
+    for (const ce of cashEvents) {
+        await prisma.cashFlowEntry.create({
+            data: ce
+        });
+    }
+
+    console.log('System seeding completed successfully!');
 }
 
 main()

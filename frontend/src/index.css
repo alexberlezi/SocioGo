@@ -18,3 +18,34 @@
 .rotate-y-180 {
   transform: rotateY(180deg);
 }
+
+/* Base accessibility for Inputs and Selects in Dark Mode */
+.dark input,
+.dark select,
+.dark textarea {
+  @apply bg-slate-900 border-slate-700 text-white placeholder:text-gray-500;
+}
+
+.dark input:focus,
+.dark select:focus,
+.dark textarea:focus {
+  @apply ring-2 ring-blue-500 border-blue-500 outline-none;
+}
+
+/* Force date picker icon to be visible in dark mode */
+.dark input[type="date"]::-webkit-calendar-picker-indicator {
+  filter: invert(1);
+  opacity: 0.6;
+  cursor: pointer;
+}
+
+.dark input[type="date"]::-webkit-calendar-picker-indicator:hover {
+  opacity: 1;
+}
+
+/* Standard focus for light mode too */
+input:focus,
+select:focus,
+textarea:focus {
+  @apply ring-2 ring-blue-500/20 border-blue-500 outline-none;
+}

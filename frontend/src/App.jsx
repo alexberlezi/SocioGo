@@ -10,6 +10,8 @@ import MembershipCard from './pages/MembershipCard';
 import PublicValidator from './pages/PublicValidator';
 import MemberFinance from './pages/MemberFinance';
 import FinanceDashboard from './pages/FinanceDashboard';
+import CashFlow from './pages/CashFlow';
+import Categories from './pages/Categories';
 import { ThemeProvider } from './context/ThemeContext';
 import { Toaster } from 'react-hot-toast';
 
@@ -35,6 +37,8 @@ function App() {
           {/* Admin Routes */}
           <Route path="/admin/financeiro/socio/:id" element={<MemberFinance />} />
           <Route path="/admin/financeiro" element={<FinanceDashboard />} />
+          <Route path="/admin/financeiro/categorias" element={<Categories />} />
+          <Route path="/admin/fluxo-caixa" element={<CashFlow />} />
           <Route path="/admin" element={<AdminDashboard />} />
           <Route path="/admin/approvals" element={<PendingRequests />} />
           <Route path="/admin/members" element={<MembersList />} />
