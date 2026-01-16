@@ -15,6 +15,8 @@ import {
     Filter
 } from 'lucide-react';
 import {
+    PieChart,
+    Pie,
     BarChart,
     Bar,
     XAxis,
@@ -23,7 +25,8 @@ import {
     Tooltip,
     ResponsiveContainer,
     Legend,
-    LabelList
+    LabelList,
+    Cell
 } from 'recharts';
 import AdminLayout from '../components/layout/AdminLayout';
 
@@ -60,7 +63,29 @@ const FinanceDashboard = () => {
         );
     }
 
-    const { metrics, chartData, upcoming, critical } = data;
+    const { metrics, chartData, expenseDistribution, upcoming, critical } = data;
+    const totalExpenses = expenseDistribution.reduce((sum, item) => sum + item.value, 0);
+
+    const CustomPieTooltip = ({ active, payload }) => {
+        if (active && payload && payload.length) {
+            const value = payload[0].value;
+            const percentage = totalExpenses > 0 ? ((value / totalExpenses) * 100).toFixed(1) : 0;
+            return (
+                <div className="bg-[#111827] p-3 rounded-xl shadow-2xl border border-slate-800">
+                    <p className="text-white font-bold text-xs uppercase tracking-tight mb-1">{payload[0].name}</p>
+                    <div className="flex items-center justify-between gap-4">
+                        <span className="text-gray-400 text-[10px] font-black uppercase">Valor</span>
+                        <span className="text-white font-bold text-xs">R$ {value.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</span>
+                    </div>
+                    <div className="flex items-center justify-between gap-4">
+                        <span className="text-gray-400 text-[10px] font-black uppercase">Fatia</span>
+                        <span className="text-blue-400 font-bold text-xs">{percentage}%</span>
+                    </div>
+                </div>
+            );
+        }
+        return null;
+    };
 
     const handleWhatsAppCharge = (phone, memberName, amount) => {
         if (!phone) {
@@ -152,79 +177,140 @@ const FinanceDashboard = () => {
                     </div>
                 </div>
 
-                {/* Performance Chart */}
-                <div className="bg-white dark:bg-slate-900 p-8 rounded-2xl border border-gray-100 dark:border-slate-800 shadow-sm">
-                    <div className="flex items-center justify-between mb-8">
-                        <div>
-                            <h3 className="text-lg font-bold text-gray-900 dark:text-white flex items-center gap-2 uppercase tracking-tight">
-                                <TrendingUp className="w-5 h-5 text-blue-600" />
-                                Desempenho de Arrecadação
-                            </h3>
-                            <p className="text-gray-500 text-xs font-bold uppercase mt-1 tracking-wider">Últimos 6 meses de faturamento</p>
+                <div className="grid grid-cols-1 xl:grid-cols-2 gap-8">
+                    {/* Performance Chart */}
+                    <div className="bg-white dark:bg-slate-900 p-8 rounded-2xl border border-gray-100 dark:border-slate-800 shadow-sm">
+                        <div className="flex items-center justify-between mb-8">
+                            <div>
+                                <h3 className="text-lg font-bold text-gray-900 dark:text-white flex items-center gap-2 uppercase tracking-tight">
+                                    <TrendingUp className="w-5 h-5 text-blue-600" />
+                                    Desempenho de Arrecadação
+                                </h3>
+                                <p className="text-gray-500 text-xs font-bold uppercase mt-1 tracking-wider">Últimos 6 meses de faturamento</p>
+                            </div>
+                            <div className="flex items-center gap-6">
+                                <div className="flex items-center gap-2">
+                                    <div className="w-2.5 h-2.5 rounded-full bg-[#22c55e]"></div>
+                                    <span className="text-[10px] font-black text-gray-400 uppercase tracking-widest">Pago</span>
+                                </div>
+                                <div className="flex items-center gap-2">
+                                    <div className="w-2.5 h-2.5 rounded-full bg-[#f59e0b]"></div>
+                                    <span className="text-[10px] font-black text-gray-400 uppercase tracking-widest">Pendente</span>
+                                </div>
+                            </div>
                         </div>
-                        <div className="flex items-center gap-6">
-                            <div className="flex items-center gap-2">
-                                <div className="w-2.5 h-2.5 rounded-full bg-[#22c55e]"></div>
-                                <span className="text-[10px] font-black text-gray-400 uppercase tracking-widest">Pago</span>
-                            </div>
-                            <div className="flex items-center gap-2">
-                                <div className="w-2.5 h-2.5 rounded-full bg-[#f59e0b]"></div>
-                                <span className="text-[10px] font-black text-gray-400 uppercase tracking-widest">Pendente</span>
-                            </div>
+                        <div className="h-[350px] min-h-[350px] w-full relative">
+                            <ResponsiveContainer width="100%" height="100%">
+                                <BarChart data={chartData} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
+                                    <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#E2E8F0" opacity={0.5} />
+                                    <XAxis
+                                        dataKey="name"
+                                        axisLine={false}
+                                        tickLine={false}
+                                        tick={{ fontSize: 10, fontWeight: 800, fill: '#64748B', textAnchor: 'middle' }}
+                                        dy={10}
+                                    />
+                                    <YAxis
+                                        axisLine={false}
+                                        tickLine={false}
+                                        tick={{ fontSize: 10, fontWeight: 800, fill: '#64748B' }}
+                                    />
+                                    <Tooltip
+                                        cursor={{ fill: 'transparent' }}
+                                        contentStyle={{
+                                            borderRadius: '16px',
+                                            border: 'none',
+                                            boxShadow: '0 20px 25px -5px rgb(0 0 0 / 0.1)',
+                                            backgroundColor: '#111827',
+                                            color: '#fff',
+                                            padding: '12px'
+                                        }}
+                                        itemStyle={{ color: '#fff', fontWeight: 'bold' }}
+                                    />
+                                    <Bar dataKey="pago" fill="#22c55e" radius={[6, 6, 0, 0]} barSize={32}>
+                                        <LabelList
+                                            dataKey="pago"
+                                            position="top"
+                                            fill="#fff"
+                                            fontSize={9}
+                                            fontWeight="bold"
+                                            formatter={(val) => val > 0 ? `R$ ${Math.round(val)}` : ''}
+                                            offset={10}
+                                        />
+                                    </Bar>
+                                    <Bar dataKey="pendente" fill="#f59e0b" radius={[6, 6, 0, 0]} barSize={32}>
+                                        <LabelList
+                                            dataKey="pendente"
+                                            position="top"
+                                            fill="#fff"
+                                            fontSize={9}
+                                            fontWeight="bold"
+                                            formatter={(val) => val > 0 ? `R$ ${Math.round(val)}` : ''}
+                                            offset={10}
+                                        />
+                                    </Bar>
+                                </BarChart>
+                            </ResponsiveContainer>
                         </div>
                     </div>
-                    <div className="h-[350px] min-h-[350px] w-full relative">
-                        <ResponsiveContainer width="100%" height="100%">
-                            <BarChart data={chartData} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
-                                <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#E2E8F0" opacity={0.5} />
-                                <XAxis
-                                    dataKey="name"
-                                    axisLine={false}
-                                    tickLine={false}
-                                    tick={{ fontSize: 10, fontWeight: 800, fill: '#64748B', textAnchor: 'middle' }}
-                                    dy={10}
-                                />
-                                <YAxis
-                                    axisLine={false}
-                                    tickLine={false}
-                                    tick={{ fontSize: 10, fontWeight: 800, fill: '#64748B' }}
-                                />
-                                <Tooltip
-                                    cursor={{ fill: 'transparent' }}
-                                    contentStyle={{
-                                        borderRadius: '16px',
-                                        border: 'none',
-                                        boxShadow: '0 20px 25px -5px rgb(0 0 0 / 0.1)',
-                                        backgroundColor: '#111827',
-                                        color: '#fff',
-                                        padding: '12px'
-                                    }}
-                                    itemStyle={{ color: '#fff', fontWeight: 'bold' }}
-                                />
-                                <Bar dataKey="pago" fill="#22c55e" radius={[6, 6, 0, 0]} barSize={32}>
-                                    <LabelList
-                                        dataKey="pago"
-                                        position="top"
-                                        fill="#fff"
-                                        fontSize={9}
-                                        fontWeight="bold"
-                                        formatter={(val) => val > 0 ? `R$ ${Math.round(val)}` : ''}
-                                        offset={10}
-                                    />
-                                </Bar>
-                                <Bar dataKey="pendente" fill="#f59e0b" radius={[6, 6, 0, 0]} barSize={32}>
-                                    <LabelList
-                                        dataKey="pendente"
-                                        position="top"
-                                        fill="#fff"
-                                        fontSize={9}
-                                        fontWeight="bold"
-                                        formatter={(val) => val > 0 ? `R$ ${Math.round(val)}` : ''}
-                                        offset={10}
-                                    />
-                                </Bar>
-                            </BarChart>
-                        </ResponsiveContainer>
+
+                    {/* Expense Distribution Chart */}
+                    <div className="bg-white dark:bg-slate-900 p-8 rounded-2xl border border-gray-100 dark:border-slate-800 shadow-sm flex flex-col">
+                        <div className="flex items-center justify-between mb-8">
+                            <div>
+                                <h3 className="text-lg font-bold text-gray-900 dark:text-white flex items-center gap-2 uppercase tracking-tight">
+                                    <ArrowDownRight className="w-5 h-5 text-red-500" />
+                                    Distribuição de Despesas
+                                </h3>
+                                <p className="text-gray-500 text-xs font-bold uppercase mt-1 tracking-wider">Ganhos por categoria (Mês)</p>
+                            </div>
+                        </div>
+                        <div className="flex-1 flex flex-col md:flex-row items-center gap-8 min-h-[350px]">
+                            <div className="flex-1 w-full h-[300px] relative">
+                                <ResponsiveContainer width="100%" height="100%">
+                                    <PieChart>
+                                        <Pie
+                                            data={expenseDistribution}
+                                            cx="50%"
+                                            cy="50%"
+                                            innerRadius={70}
+                                            outerRadius={100}
+                                            paddingAngle={5}
+                                            dataKey="value"
+                                            stroke="none"
+                                        >
+                                            {expenseDistribution.map((entry, index) => (
+                                                <Cell key={`cell-${index}`} fill={entry.color} />
+                                            ))}
+                                        </Pie>
+                                        <Tooltip content={<CustomPieTooltip />} />
+                                    </PieChart>
+                                </ResponsiveContainer>
+                                <div className="absolute inset-0 flex flex-col items-center justify-center pointer-events-none">
+                                    <span className="text-[10px] font-black text-gray-400 uppercase tracking-widest">Total</span>
+                                    <span className="text-xl font-black text-gray-900 dark:text-white">
+                                        R$ {totalExpenses.toLocaleString('pt-BR', { minimumFractionDigits: 0, maximumFractionDigits: 0 })}
+                                    </span>
+                                </div>
+                            </div>
+
+                            <div className="w-full md:w-48 flex flex-col gap-3 max-h-[300px] overflow-y-auto custom-scrollbar pr-2">
+                                {expenseDistribution.sort((a, b) => b.value - a.value).map((item, index) => (
+                                    <div key={index} className="flex items-center justify-between gap-3 group">
+                                        <div className="flex items-center gap-2 min-w-0">
+                                            <div className="w-2.5 h-2.5 rounded-full flex-shrink-0" style={{ backgroundColor: item.color }}></div>
+                                            <span className="text-[11px] font-bold text-gray-600 dark:text-gray-300 truncate uppercase tracking-tight">{item.name}</span>
+                                        </div>
+                                        <span className="text-[11px] font-black text-gray-900 dark:text-white whitespace-nowrap">
+                                            R$ {item.value.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
+                                        </span>
+                                    </div>
+                                ))}
+                                {expenseDistribution.length === 0 && (
+                                    <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest text-center py-8 opacity-50">Sem despesas registradas</p>
+                                )}
+                            </div>
+                        </div>
                     </div>
                 </div>
 

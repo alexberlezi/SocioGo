@@ -14,8 +14,16 @@ model User {
   password  String
   role      Role      @default(SOCIO)
   status    UserStatus @default(PENDING)
+  
+  mfaEnabled Boolean   @default(false)
+  lastLogin  DateTime?
+  
+  associationId Int?   // Tenant ID
+  association   Association? @relation(fields: [associationId], references: [id])
+
   createdAt DateTime  @default(now())
   updatedAt DateTime  @updatedAt
+  deletedAt DateTime? // Soft Delete
 
   profile            Profile?
   financialRecords   FinancialRecord[]
@@ -28,12 +36,54 @@ enum Role {
   ADMIN
   DIRETOR
   SOCIO
+  GLOBAL_ADMIN
+  ASSOCIATION_ADMIN
+  FINANCIAL_OP
+  COMMUNICATION_OP
 }
 
 enum UserStatus {
   PENDING
   APPROVED
   REJECTED
+  SUSPENDED
+}
+
+enum AssociationStatus {
+  ACTIVE
+  INACTIVE
+  TEST
+  DEFAULTER
+}
+
+model Association {
+  id          Int      @id @default(autoincrement())
+  name        String
+  logoLight   String?  // URL or Base64 (Light Mode)
+  logoDark    String?  // URL or Base64 (Dark Mode)
+  primaryColor String? @default("#2563eb") // Hex Color (Default Blue)
+  cnpj        String?  @unique
+  status      AssociationStatus @default(ACTIVE)
+
+  // Address
+  zipCode     String?
+  street      String?
+  number      String?
+  district    String?
+  city        String?
+  state       String?
+
+  // Contact
+  whatsapp    String?
+  email       String?
+
+  // System
+  activeModules Json? // Custom modules config per association
+
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  
+  users       User[]
 }
 
 // 2. Profile
@@ -213,9 +263,27 @@ model CashFlowEntry {
   category    String?      // Mantendo campo legado para compatibilidade se necessário, mas...
   categoryId  Int?         // Nova relação
   categoryRef Category?    @relation(fields: [categoryId], references: [id])
+  
+  operatorId  Int?         // Usuário que realizou o lançamento
+  operatorName String?     // Nome do operador no momento do lançamento
 
   createdAt   DateTime     @default(now())
   updatedAt   DateTime     @updatedAt
+}
+
+model FinancialLog {
+  id          Int      @id @default(autoincrement())
+  timestamp   DateTime @default(now())
+  userId      Int      // Quem realizou a ação
+  userName    String   // Nome do usuário logado
+  action      String   // CREATE, UPDATE, DELETE
+  entityType  String   // CASH_FLOW, CATEGORY, etc
+  entityId    Int      // ID do registro afetado
+  oldValue    Json?    // Valores anteriores (para UPDATES)
+  newValue    Json?    // Valores novos (para UPDATES/CREATES)
+  description String?  // Descrição amigável da ação
+
+  @@index([timestamp])
 }
 
 model Category {
@@ -232,4 +300,33 @@ model Category {
 enum CashFlowType {
   IN
   OUT
+}
+// ... (previous content)
+
+// 12. Monthly Closure
+model MonthlyClosure {
+  id           Int       @id @default(autoincrement())
+  month        Int
+  year         Int
+  status       String    @default("OPEN") // 'OPEN' or 'CLOSED'
+  
+  closedAt     DateTime?
+  closedBy     Int?      // User ID
+  
+  reopenedAt   DateTime?
+  reopenedBy   Int?      // User ID
+  reopenReason String?   @db.Text
+  
+  createdAt    DateTime  @default(now())
+  updatedAt    DateTime  @updatedAt
+
+  @@unique([month, year])
+}
+
+// 13. System Settings (SaaS Feature Flags)
+model SystemSettings {
+  id        Int      @id @default(autoincrement())
+  key       String   @unique // e.g., "SAAS_FEATURES"
+  value     Json     // Stores { SITE: true, PORTAL_SOCIO: false, ... }
+  updatedAt DateTime @updatedAt
 }

@@ -1,9 +1,12 @@
 import React from 'react';
 import { NavLink, Outlet, useNavigate } from 'react-router-dom';
 import { Home, CreditCard, Vote, User, LogOut, FileText } from 'lucide-react';
+import { useFeatures } from '../auth/FeatureGuard';
 
 const MemberPortalLayout = () => {
     const navigate = useNavigate();
+
+    const { features } = useFeatures();
 
     // Mock User Data (Replace with Context/Auth)
     const user = {
@@ -13,12 +16,13 @@ const MemberPortalLayout = () => {
     };
 
     const navItems = [
-        { icon: Home, label: 'Início', path: '/portal/dashboard' },
-        { icon: CreditCard, label: 'Carteira', path: '/portal/carteirinha' }, // Dynamic ID needs handling in real app
-        { icon: Vote, label: 'Votações', path: '/portal/votacoes' },
-        { icon: FileText, label: 'Certificados', path: '/portal/certificados' },
-        { icon: User, label: 'Perfil', path: '/portal/perfil' },
-    ];
+        { icon: Home, label: 'Início', path: '/portal/dashboard', show: true },
+        { icon: CreditCard, label: 'Carteira', path: '/portal/carteirinha', show: true },
+        { icon: Vote, label: 'Votações', path: '/portal/votacoes', show: features.PORTAL_VOTACOES },
+        { icon: FileText, label: 'Certificados', path: '/portal/certificados', show: true },
+        // { icon: DollarSign, label: 'Financeiro', path: '/portal/financeiro', show: features.PORTAL_FINANCEIRO }, // Example if we had it
+        { icon: User, label: 'Perfil', path: '/portal/perfil', show: true },
+    ].filter(item => item.show !== false);
 
     const handleLogout = () => {
         // Clear auth logic here

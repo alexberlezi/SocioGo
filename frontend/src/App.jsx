@@ -12,8 +12,15 @@ import MemberFinance from './pages/MemberFinance';
 import FinanceDashboard from './pages/FinanceDashboard';
 import CashFlow from './pages/CashFlow';
 import Categories from './pages/Categories';
+import FinancialAudit from './pages/FinancialAudit';
+import MonthlyClosure from './pages/MonthlyClosure';
 import { ThemeProvider } from './context/ThemeContext';
 import { Toaster } from 'react-hot-toast';
+import SaasManagement from './pages/SaasManagement';
+import UserManagement from './pages/UserManagement';
+import CompanyManagement from './pages/CompanyManagement';
+import FeatureGuard from './components/auth/FeatureGuard';
+import GlobalAdminGuard from './components/auth/GlobalAdminGuard';
 
 // Portal Imports
 import MemberPortalLayout from './components/layout/MemberPortalLayout';
@@ -38,6 +45,8 @@ function App() {
           <Route path="/admin/financeiro/socio/:id" element={<MemberFinance />} />
           <Route path="/admin/financeiro" element={<FinanceDashboard />} />
           <Route path="/admin/financeiro/categorias" element={<Categories />} />
+          <Route path="/admin/financeiro/logs" element={<FinancialAudit />} />
+          <Route path="/admin/financeiro/fechamento" element={<MonthlyClosure />} />
           <Route path="/admin/fluxo-caixa" element={<CashFlow />} />
           <Route path="/admin" element={<AdminDashboard />} />
           <Route path="/admin/approvals" element={<PendingRequests />} />
@@ -45,6 +54,17 @@ function App() {
           <Route path="/admin/members/:id/edit" element={<EditMemberProfile />} />
           <Route path="/admin/approvals/:id" element={<MemberDetails />} />
           <Route path="/admin/settings" element={<AssociationSettings />} />
+          <Route path="/admin/users" element={<UserManagement />} />
+          <Route path="/admin/associations" element={
+            <GlobalAdminGuard>
+              <CompanyManagement />
+            </GlobalAdminGuard>
+          } />
+          <Route path="/admin/saas" element={
+            <GlobalAdminGuard>
+              <SaasManagement />
+            </GlobalAdminGuard>
+          } />
 
           {/* Member Portal Routes */}
           <Route path="/portal" element={<MemberPortalLayout />}>

@@ -85,6 +85,29 @@ router.get('/dashboard', async (req, res) => {
             include: { user: { include: { profile: true } } }
         });
 
+        // 5. Expense Distribution (Current Month)
+        const expenses = await prisma.cashFlowEntry.findMany({
+            where: {
+                type: 'OUT',
+                date: { gte: startOfMonth, lte: endOfMonth }
+            },
+            include: { categoryRef: true }
+        });
+
+        const distributionMap = expenses.reduce((acc, entry) => {
+            const catId = entry.categoryId || 0;
+            const catName = entry.categoryRef?.name || entry.category || 'Sem Categoria';
+            const catColor = entry.categoryRef?.color || '#64748B';
+
+            if (!acc[catId]) {
+                acc[catId] = { name: catName, value: 0, color: catColor };
+            }
+            acc[catId].value += Number(entry.amount);
+            return acc;
+        }, {});
+
+        const expenseDistribution = Object.values(distributionMap);
+
         res.json({
             metrics: {
                 revenue: Number(revenue._sum.amount) || 0,
@@ -93,6 +116,7 @@ router.get('/dashboard', async (req, res) => {
                 newMembers: newMembersCount
             },
             chartData,
+            expenseDistribution,
             upcoming: upcoming.map(r => ({
                 id: r.id,
                 memberName: r.user.profile?.fullName || r.user.profile?.socialReason || 'Sócio',

@@ -215,11 +215,29 @@ app.use('/api/finance', financeRoutes);
 
 // CashFlow Routes
 const cashFlowRoutes = require('./routes/cashflow.routes');
-app.use('/api/cashflow', cashFlowRoutes);
+const financialLogRoutes = require('./routes/financial-logs.routes');
+const monthlyClosureRoutes = require('./routes/monthly-closure.routes');
 
 // Categories Routes
 const categoryRoutes = require('./routes/categories.routes');
 app.use('/api/categories', categoryRoutes);
+
+// Financial Logs Routes
+app.use('/api/cashflow', cashFlowRoutes);
+app.use('/api/finance/logs', financialLogRoutes);
+app.use('/api/finance/closure', monthlyClosureRoutes);
+
+// SaaS Routes
+const saasRoutes = require('./routes/saas.routes');
+app.use('/api/saas', saasRoutes);
+
+// User Management Routes
+const userRoutes = require('./routes/users.routes');
+app.use('/api/users', userRoutes);
+
+// Companies Routes
+const companiesRoutes = require('./routes/companies.routes');
+app.use('/api/companies', companiesRoutes);
 
 const PORT = process.env.PORT || 3000;
 app.listen(PORT, () => {
