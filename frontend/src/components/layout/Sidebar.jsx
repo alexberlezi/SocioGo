@@ -14,8 +14,8 @@ const NavItem = ({ icon: Icon, label, to, badge, active }) => (
     <Link
         to={to}
         className={`flex items-center gap-3 px-4 py-3 rounded-xl transition-all duration-200 group ${active
-                ? 'bg-blue-600 text-white shadow-lg shadow-blue-500/20'
-                : 'text-gray-600 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-slate-800 hover:text-blue-600 dark:hover:text-blue-400'
+            ? 'bg-blue-600 text-white shadow-lg shadow-blue-500/20'
+            : 'text-gray-600 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-slate-800 hover:text-blue-600 dark:hover:text-blue-400'
             }`}
     >
         <Icon className={`w-5 h-5 ${active ? 'text-white' : 'text-gray-400 group-hover:text-blue-600 dark:text-gray-500 dark:group-hover:text-blue-400'}`} />
@@ -30,7 +30,31 @@ const NavItem = ({ icon: Icon, label, to, badge, active }) => (
 
 const Sidebar = () => {
     const location = useLocation();
-    const isActive = (path) => location.pathname === path;
+    const [pendingCount, setPendingCount] = React.useState(0);
+
+    React.useEffect(() => {
+        const fetchPendingCount = async () => {
+            try {
+                const response = await fetch('http://localhost:3000/api/admin/pending-members');
+                if (response.ok) {
+                    const data = await response.json();
+                    setPendingCount(data.length);
+                }
+            } catch (error) {
+                console.error('Failed to fetch pending count:', error);
+            }
+        };
+
+        fetchPendingCount();
+        // Optional: Poll every few seconds to keep it fresh
+        const interval = setInterval(fetchPendingCount, 30000);
+        return () => clearInterval(interval);
+    }, []);
+
+    const isActive = (path, exact = false) => {
+        if (exact) return location.pathname === path;
+        return location.pathname.startsWith(path);
+    };
 
     return (
         <aside className="hidden lg:flex flex-col w-[280px] h-screen fixed left-0 top-0 bg-white dark:bg-slate-900 border-r border-gray-200 dark:border-slate-800 z-50 transition-colors duration-300">
@@ -52,13 +76,13 @@ const Sidebar = () => {
                     icon={LayoutDashboard}
                     label="Dashboard"
                     to="/admin"
-                    active={isActive('/admin')}
+                    active={location.pathname === '/admin'}
                 />
                 <NavItem
                     icon={UserCheck}
                     label="Aprovação de Sócios"
                     to="/admin/approvals"
-                    badge="3"
+                    badge={pendingCount > 0 ? pendingCount.toString() : null}
                     active={isActive('/admin/approvals')}
                 />
                 <NavItem

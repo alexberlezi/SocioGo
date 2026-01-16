@@ -95,7 +95,7 @@ const MemberApprovalCard = ({ member, onApprove, onReject }) => {
                             {profile.type === 'PF' ? profile.fullName : profile.socialReason}
                         </h2>
 
-                        <span className="inline-flex items-center px-4 py-1.5 bg-yellow-50 text-yellow-700 text-[10px] font-extrabold uppercase tracking-widest rounded-full mb-3 border border-yellow-100">
+                        <span className="inline-flex items-center px-4 py-1.5 bg-yellow-100 text-yellow-800 text-[10px] font-extrabold uppercase tracking-widest rounded-full mb-3 border border-yellow-200">
                             Pendente
                         </span>
 
