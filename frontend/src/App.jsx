@@ -2,6 +2,7 @@ import { BrowserRouter, Routes, Route } from 'react-router-dom';
 import AssocieSe from './pages/AssocieSe';
 import AdminDashboard from './pages/AdminDashboard';
 import PendingRequests from './pages/PendingRequests';
+import MembersList from './pages/MembersList';
 import MemberDetails from './pages/MemberDetails';
 import { ThemeProvider } from './context/ThemeContext';
 
@@ -14,6 +15,7 @@ function App() {
           <Route path="/associe-se" element={<AssocieSe />} />
           <Route path="/admin" element={<AdminDashboard />} />
           <Route path="/admin/approvals" element={<PendingRequests />} />
+          <Route path="/admin/members" element={<MembersList />} />
           <Route path="/admin/approvals/:id" element={<MemberDetails />} />
         </Routes>
       </BrowserRouter>
