@@ -311,4 +311,38 @@ router.patch('/members/:id/photo', upload.single('photo'), async (req, res) => {
     }
 });
 
+// 11. Delete Member (Only if SUSPENDED)
+router.delete('/:id', async (req, res) => {
+    try {
+        const { id } = req.params;
+
+        const member = await prisma.user.findUnique({
+            where: { id: parseInt(id) },
+            include: { profile: true }
+        });
+
+        if (!member) {
+            return res.status(404).json({ error: 'Membro não encontrado' });
+        }
+
+        if (member.status !== 'SUSPENDED') {
+            return res.status(400).json({ error: 'Apenas membros com status "Suspenso" podem ser excluídos permanentemente.' });
+        }
+
+        // Delete associated records first if not handled by cascades
+        // In our schema, Profile usually has a relation. 
+        // We'll delete them in a transaction to be safe.
+        await prisma.$transaction([
+            prisma.profile.deleteMany({ where: { userId: parseInt(id) } }),
+            prisma.dependent.deleteMany({ where: { userId: parseInt(id) } }),
+            prisma.user.delete({ where: { id: parseInt(id) } })
+        ]);
+
+        res.json({ message: 'Associado excluído com sucesso.' });
+    } catch (error) {
+        console.error('Error deleting member:', error);
+        res.status(500).json({ error: 'Erro ao excluir associado' });
+    }
+});
+
 module.exports = router;

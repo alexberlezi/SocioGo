@@ -3,7 +3,8 @@ import AdminLayout from '../components/layout/AdminLayout';
 import {
     Search, Filter, ChevronDown, Download,
     ChevronLeft, ChevronRight, SlidersHorizontal,
-    Eye, Edit, Ban, CheckCircle, FileText, Check, X
+    Eye, Edit, Ban, CheckCircle, FileText, Check, X, Trash2,
+    CircleDollarSign
 } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import * as XLSX from 'xlsx';
@@ -115,6 +116,44 @@ const PaginationDropdown = ({ value, options, onChange }) => {
                             {value === option.value && <Check className="w-3.5 h-3.5 ml-auto text-white" />}
                         </button>
                     ))}
+                </div>
+            </div>
+        </div>
+    );
+};
+
+// --- Component: DeleteModal ---
+const DeleteModal = ({ isOpen, onClose, onConfirm, memberName }) => {
+    if (!isOpen) return null;
+
+    return (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm animate-in fade-in duration-300">
+            <div className="bg-white dark:bg-slate-900 rounded-3xl w-full max-w-md overflow-hidden shadow-2xl border border-gray-100 dark:border-slate-800 animate-in zoom-in-95 duration-300">
+                <div className="p-8 text-center">
+                    <div className="w-16 h-16 bg-red-50 dark:bg-red-900/20 rounded-2xl flex items-center justify-center mx-auto mb-6 text-red-600 dark:text-red-400">
+                        <Trash2 className="w-8 h-8" />
+                    </div>
+                    <h3 className="text-xl font-bold text-gray-900 dark:text-white mb-2">Confirmar Exclusão</h3>
+                    <p className="text-gray-500 dark:text-gray-400 text-sm leading-relaxed mb-8">
+                        Deseja realmente excluir o associado <span className="font-bold text-gray-900 dark:text-white">"{memberName}"</span>?
+                        <br />
+                        <span className="text-red-500 font-medium">Esta ação não pode ser desfeita.</span>
+                    </p>
+
+                    <div className="grid grid-cols-2 gap-3">
+                        <button
+                            onClick={onClose}
+                            className="px-6 py-3 bg-gray-50 dark:bg-slate-800 text-gray-600 dark:text-gray-300 font-bold rounded-xl hover:bg-gray-100 dark:hover:bg-slate-700 transition-colors"
+                        >
+                            Cancelar
+                        </button>
+                        <button
+                            onClick={onConfirm}
+                            className="px-6 py-3 bg-red-600 hover:bg-red-700 text-white font-bold rounded-xl shadow-lg shadow-red-200 dark:shadow-none transition-all transform active:scale-95"
+                        >
+                            Confirmar Exclusão
+                        </button>
+                    </div>
                 </div>
             </div>
         </div>
@@ -245,6 +284,7 @@ const MembersList = () => {
 
     // Modal State
     const [suspendModal, setSuspendModal] = useState({ isOpen: false, memberId: null, memberName: '' });
+    const [deleteModal, setDeleteModal] = useState({ isOpen: false, memberId: null, memberName: '' });
     const [cardModal, setCardModal] = useState({ isOpen: false, member: null });
 
     // UI State
@@ -332,6 +372,11 @@ const MembersList = () => {
         setSuspendModal({ isOpen: true, memberId: member.id, memberName: name });
     };
 
+    const handleDeleteClick = (member) => {
+        const name = member.profile?.type === 'PF' ? member.profile?.fullName : member.profile?.socialReason;
+        setDeleteModal({ isOpen: true, memberId: member.id, memberName: name });
+    };
+
     const confirmSuspend = async () => {
         if (!suspendModal.memberId) return;
 
@@ -353,6 +398,34 @@ const MembersList = () => {
         try {
             await promise;
             setSuspendModal({ isOpen: false, memberId: null, memberName: '' });
+            fetchMembers(meta.page); // Refresh list
+        } catch (error) {
+            console.error(error);
+        }
+    };
+
+    const confirmDelete = async () => {
+        if (!deleteModal.memberId) return;
+
+        const promise = fetch(`http://localhost:3000/api/admin/members/${deleteModal.memberId}`, {
+            method: 'DELETE',
+        }).then(async (res) => {
+            if (!res.ok) {
+                const data = await res.json();
+                throw new Error(data.error || 'Falha ao excluir');
+            }
+            return res.json();
+        });
+
+        toast.promise(promise, {
+            loading: 'Excluindo associado...',
+            success: 'Associado excluído com sucesso!',
+            error: (err) => err.message || 'Erro ao excluir associado.'
+        });
+
+        try {
+            await promise;
+            setDeleteModal({ isOpen: false, memberId: null, memberName: '' });
             fetchMembers(meta.page); // Refresh list
         } catch (error) {
             console.error(error);
@@ -539,12 +612,19 @@ const MembersList = () => {
 
     return (
         <AdminLayout>
-            <div className="flex flex-col gap-6 w-full max-w-[1600px] mx-auto">
+            <div className="flex flex-col gap-6 w-full">
                 <SuspendModal
                     isOpen={suspendModal.isOpen}
                     onClose={() => setSuspendModal({ isOpen: false, memberId: null, memberName: '' })}
                     onConfirm={confirmSuspend}
                     memberName={suspendModal.memberName}
+                />
+
+                <DeleteModal
+                    isOpen={deleteModal.isOpen}
+                    onClose={() => setDeleteModal({ isOpen: false, memberId: null, memberName: '' })}
+                    onConfirm={confirmDelete}
+                    memberName={deleteModal.memberName}
                 />
 
                 {/* Card Modal */}
@@ -758,6 +838,13 @@ const MembersList = () => {
                                                     >
                                                         <Edit className="w-4 h-4" />
                                                     </button>
+                                                    <button
+                                                        onClick={() => navigate(`/admin/financeiro/socio/${member.id}`)}
+                                                        title="Ver Extrato Financeiro"
+                                                        className="p-1.5 text-green-400 hover:text-green-600 hover:bg-green-50 dark:hover:bg-green-900/20 rounded-full transition-colors"
+                                                    >
+                                                        <CircleDollarSign className="w-4 h-4" />
+                                                    </button>
                                                     {member.status !== 'SUSPENDED' ? (
                                                         <button
                                                             onClick={() => handleSuspendClick(member)}
@@ -773,6 +860,25 @@ const MembersList = () => {
                                                             className="p-1.5 text-gray-300 dark:text-gray-600 cursor-not-allowed rounded-full transition-colors"
                                                         >
                                                             <Ban className="w-4 h-4" />
+                                                        </button>
+                                                    )}
+
+                                                    {/* Delete Action - Only for Suspended */}
+                                                    {member.status === 'SUSPENDED' ? (
+                                                        <button
+                                                            onClick={() => handleDeleteClick(member)}
+                                                            title="Excluir Definitivamente"
+                                                            className="p-1.5 text-red-500 hover:text-red-700 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-full transition-colors"
+                                                        >
+                                                            <Trash2 className="w-4 h-4" />
+                                                        </button>
+                                                    ) : (
+                                                        <button
+                                                            title="Só é possível excluir sócios suspensos"
+                                                            disabled
+                                                            className="p-1.5 text-gray-400 dark:text-gray-600 opacity-50 cursor-not-allowed rounded-full transition-colors"
+                                                        >
+                                                            <Trash2 className="w-4 h-4" />
                                                         </button>
                                                     )}
                                                 </div>

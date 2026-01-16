@@ -233,7 +233,7 @@ const EditMemberProfile = ({ isReadOnly = false }) => {
 
                         {/* Profile Picture */}
                         <div className="relative z-10 mt-8 mb-3 flex justify-center">
-                            <div className="w-36 h-36 rounded-2xl bg-white dark:bg-slate-900 p-1.5 shadow-xl mx-auto relative group">
+                            <div className="w-36 h-36 rounded-2xl bg-white p-1.5 shadow-xl mx-auto relative group">
                                 <div className="w-full h-full rounded-xl overflow-hidden bg-gray-50 dark:bg-slate-800 flex items-center justify-center border border-gray-100 dark:border-slate-700">
                                     {member.profile.docPartnerPhoto ? (
                                         <img src={member.profile.docPartnerPhoto} alt="Profile" className="w-full h-full object-cover" />

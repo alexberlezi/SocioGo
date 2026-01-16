@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { useParams } from 'react-router-dom';
 import QRCode from 'react-qr-code';
-import { RotateCw, CheckCircle } from 'lucide-react';
+import { RotateCw, CheckCircle, AlertCircle } from 'lucide-react';
 
 const MembershipCard = ({ memberData }) => {
     const { id } = useParams();
@@ -22,11 +22,28 @@ const MembershipCard = ({ memberData }) => {
     // Use prop data if available, otherwise use default
     const member = memberData || defaultMember;
 
-    const isSuspended = member.status === 'SUSPENDED';
+    // Logic to determine status color and icon
+    const getStatusConfig = (status) => {
+        switch (status) {
+            case 'ACTIVE':
+            case 'APPROVED':
+                return { color: 'green', text: 'ACTIVE', icon: CheckCircle };
+            case 'PENDING':
+                return { color: 'yellow', text: 'PENDING', icon: AlertCircle };
+            case 'SUSPENDED':
+                return { color: 'red', text: 'SUSPENDED', icon: AlertCircle };
+            default:
+                return { color: 'red', text: 'INVALID', icon: AlertCircle };
+        }
+    };
+
+    const statusConfig = getStatusConfig(member.status);
+    const StatusIcon = statusConfig.icon;
+    const isSuspended = member.status === 'SUSPENDED' || member.status === 'REJECTED';
 
     return (
         <div className="flex flex-col items-center justify-center p-4 w-full h-full">
-            {/* Context Header (only if not in modal implies cleaner look, but user wants titles) */}
+            {/* Context Header */}
             <div className="mb-6 text-center animate-in fade-in slide-in-from-bottom-4 duration-700">
                 <h2 className="text-2xl font-black text-slate-900 dark:text-white tracking-tight">Sua Identidade</h2>
                 <p className="text-slate-500 dark:text-slate-400 text-sm font-medium">Toque no cartão para ver o QR Code</p>
@@ -45,9 +62,8 @@ const MembershipCard = ({ memberData }) => {
                         <div className="absolute top-0 right-0 w-64 h-64 bg-blue-500/20 rounded-full blur-3xl -translate-y-1/2 translate-x-1/2"></div>
                         <div className="absolute bottom-0 left-0 w-48 h-48 bg-purple-500/10 rounded-full blur-3xl translate-y-1/2 -translate-x-1/2"></div>
 
-                        {/* Texture causing subtle noise/grain if needed, skipping for cleaner look */}
 
-                        {/* Status Overlay */}
+                        {/* Status Overlay for Suspended only */}
                         {isSuspended && (
                             <div className="absolute inset-0 z-50 bg-black/60 backdrop-blur-[2px] flex items-center justify-center flex-col rounded-2xl">
                                 <div className="border-[3px] border-white px-8 py-2 -rotate-12 bg-red-600 shadow-[0_0_15px_rgba(220,38,38,0.7)]">
@@ -80,13 +96,13 @@ const MembershipCard = ({ memberData }) => {
                                 <div className="relative group-hover:scale-[1.02] transition-transform duration-300">
                                     <div className="absolute -inset-1 bg-gradient-to-br from-blue-500 to-purple-600 rounded-2xl opacity-50 blur-sm"></div>
                                     <img
-                                        src={member.photo}
+                                        src={`${member.photo}?v=2`} // Cache buster
                                         alt="Profile"
                                         className="relative w-24 h-32 md:w-28 md:h-36 object-cover rounded-xl border-[3px] border-white shadow-xl bg-slate-800"
                                     />
                                     {!isSuspended && (
-                                        <div className="absolute -bottom-2 -right-2 w-7 h-7 bg-green-500 rounded-full border-[3px] border-slate-900 flex items-center justify-center shadow-sm z-20">
-                                            <CheckCircle className="w-3.5 h-3.5 text-white" />
+                                        <div className={`absolute -bottom-2 -right-2 w-7 h-7 bg-${statusConfig.color}-500 rounded-full border-[3px] border-slate-900 flex items-center justify-center shadow-sm z-20`}>
+                                            <StatusIcon className="w-3.5 h-3.5 text-white" />
                                         </div>
                                     )}
                                 </div>
@@ -106,7 +122,7 @@ const MembershipCard = ({ memberData }) => {
                                         </div>
                                         <div>
                                             <p className="text-[9px] text-slate-400 uppercase font-bold tracking-wider">Validade</p>
-                                            <p className="text-xs font-mono font-bold text-green-400">{member.validThru}</p>
+                                            <p className={`text-xs font-mono font-bold text-${statusConfig.color}-400`}>{member.validThru}</p>
                                         </div>
                                     </div>
                                 </div>
@@ -129,7 +145,7 @@ const MembershipCard = ({ memberData }) => {
                             <div className="flex-1 flex flex-col items-center justify-center w-full">
                                 <div className="bg-white p-6 rounded-xl shadow-[0_4px_20px_-5px_rgba(0,0,0,0.1)] border border-slate-100 mb-6 w-fit mx-auto">
                                     <QRCode
-                                        value={`https://sociogo.app/verify/${member.id}`}
+                                        value={`${window.location.origin}/v/${member.id}`}
                                         size={140}
                                         fgColor={isSuspended ? "#ef4444" : "#020617"} // Slate-950
                                     />

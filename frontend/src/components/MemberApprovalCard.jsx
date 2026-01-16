@@ -73,7 +73,7 @@ const MemberApprovalCard = ({ member, onApprove, onReject }) => {
 
                     {/* Profile Picture */}
                     <div className="relative z-10 mt-8 mb-3">
-                        <div className="w-36 h-36 rounded-2xl bg-white dark:bg-slate-900 p-1.5 shadow-xl mx-auto transform rotate-0 hover:scale-105 transition-transform duration-300">
+                        <div className="w-36 h-36 rounded-2xl bg-white p-1.5 shadow-xl mx-auto transform rotate-0 hover:scale-105 transition-transform duration-300">
                             <div className="w-full h-full rounded-xl overflow-hidden bg-gray-50 dark:bg-slate-800 flex items-center justify-center border border-gray-100 dark:border-slate-700">
                                 {profile.docPartnerPhoto && !imageError ? (
                                     <img

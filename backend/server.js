@@ -201,9 +201,17 @@ app.post('/api/register', upload.fields([
     }
 });
 
+// Public Routes
+const publicRoutes = require('./routes/public.routes');
+app.use('/api/public', publicRoutes);
+
 // Member Routes
 const memberRoutes = require('./routes/member.routes');
 app.use('/api/admin', memberRoutes);
+
+// Finance Routes
+const financeRoutes = require('./routes/finance.routes');
+app.use('/api/finance', financeRoutes);
 
 const PORT = process.env.PORT || 3000;
 app.listen(PORT, () => {

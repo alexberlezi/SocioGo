@@ -7,6 +7,8 @@ import MemberDetails from './pages/MemberDetails';
 import EditMemberProfile from './pages/EditMemberProfile';
 import AssociationSettings from './pages/AssociationSettings';
 import MembershipCard from './pages/MembershipCard';
+import PublicValidator from './pages/PublicValidator';
+import MemberFinance from './pages/MemberFinance';
 import { ThemeProvider } from './context/ThemeContext';
 import { Toaster } from 'react-hot-toast';
 
@@ -27,8 +29,10 @@ function App() {
 
           {/* Public Verification Route */}
           <Route path="/portal/carteirinha/:id" element={<MembershipCard />} />
+          <Route path="/v/:id" element={<PublicValidator />} />
 
           {/* Admin Routes */}
+          <Route path="/admin/financeiro/socio/:id" element={<MemberFinance />} />
           <Route path="/admin" element={<AdminDashboard />} />
           <Route path="/admin/approvals" element={<PendingRequests />} />
           <Route path="/admin/members" element={<MembersList />} />
