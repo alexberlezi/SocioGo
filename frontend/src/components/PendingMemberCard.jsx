@@ -1,16 +1,17 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { ChevronRight, User, GraduationCap, Briefcase } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 
 const PendingMemberCard = ({ member }) => {
     const navigate = useNavigate();
+    const [imageError, setImageError] = useState(false);
     const { profile } = member;
 
     if (!profile) return null;
 
     const isPF = profile.type === 'PF';
     const mainName = isPF ? profile.fullName : profile.socialReason;
-    const subInfo = isPF ? (profile.education || profile.jobRole || 'Profissional') : (profile.fantasyName || 'Empresa');
+    const subInfo = isPF ? (profile.jobRole || profile.education || 'Profissional') : (profile.fantasyName || 'Empresa');
 
     return (
         <div className="group relative bg-white dark:bg-slate-900 rounded-3xl overflow-hidden shadow-lg hover:shadow-xl transition-all duration-300 flex flex-col h-full hover:-translate-y-1">
@@ -33,15 +34,18 @@ const PendingMemberCard = ({ member }) => {
                     <div className="flex-shrink-0">
                         <div className="w-24 h-24 bg-white p-1.5 rounded-2xl shadow-md">
                             <div className="w-full h-full bg-gray-100 dark:bg-slate-800 rounded-xl overflow-hidden flex items-center justify-center border border-gray-100 dark:border-slate-700">
-                                {profile.docPartnerPhoto ? (
+                                {profile.docPartnerPhoto && !imageError ? (
                                     <img
-                                        src={`http://localhost:3000/${profile.docPartnerPhoto}`}
+                                        src={profile.docPartnerPhoto.startsWith('http') ? profile.docPartnerPhoto : `http://localhost:3000/${profile.docPartnerPhoto}`}
                                         alt={mainName}
                                         className="w-full h-full object-cover"
+                                        onError={() => setImageError(true)}
                                     />
                                 ) : (
-                                    <div className="text-gray-300 dark:text-gray-600">
-                                        <User className="w-10 h-10" />
+                                    <div className="w-full h-full flex items-center justify-center bg-gradient-to-br from-blue-500 to-indigo-600 text-white">
+                                        <span className="text-3xl font-black uppercase">
+                                            {mainName?.charAt(0) || 'U'}
+                                        </span>
                                     </div>
                                 )}
                             </div>
@@ -53,9 +57,15 @@ const PendingMemberCard = ({ member }) => {
                         <h3 className="text-lg font-black text-gray-900 dark:text-white leading-tight uppercase line-clamp-2" title={mainName}>
                             {mainName}
                         </h3>
-                        <div className="flex items-center justify-center sm:justify-start gap-1.5 mt-1 text-sm text-gray-500 dark:text-gray-400 font-bold">
-                            {isPF ? <GraduationCap className="w-4 h-4 text-blue-500" /> : <Briefcase className="w-4 h-4 text-blue-500" />}
-                            <span className="line-clamp-1">{subInfo}</span>
+                        <div className="flex items-start justify-center sm:justify-start gap-1.5 mt-2 text-sm text-gray-500 dark:text-gray-400 font-bold">
+                            <div className="mt-0.5 min-w-[16px]">
+                                {isPF ? (
+                                    profile.jobRole ? <Briefcase className="w-4 h-4 text-blue-500" /> : <GraduationCap className="w-4 h-4 text-blue-500" />
+                                ) : (
+                                    <Briefcase className="w-4 h-4 text-blue-500" />
+                                )}
+                            </div>
+                            <span className="leading-tight text-left">{subInfo}</span>
                         </div>
                     </div>
                 </div>

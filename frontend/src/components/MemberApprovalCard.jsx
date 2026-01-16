@@ -51,6 +51,7 @@ const MemberApprovalCard = ({ member, onApprove, onReject }) => {
     const [activeTab, setActiveTab] = useState('data'); // 'data' or 'docs'
     const [rejectReason, setRejectReason] = useState('');
     const [showRejectInput, setShowRejectInput] = useState(false);
+    const [imageError, setImageError] = useState(false);
 
     const { profile, dependents } = member;
     if (!profile) return null;
@@ -74,16 +75,19 @@ const MemberApprovalCard = ({ member, onApprove, onReject }) => {
                     <div className="relative z-10 mt-8 mb-3">
                         <div className="w-36 h-36 rounded-2xl bg-white dark:bg-slate-900 p-1.5 shadow-xl mx-auto transform rotate-0 hover:scale-105 transition-transform duration-300">
                             <div className="w-full h-full rounded-xl overflow-hidden bg-gray-50 dark:bg-slate-800 flex items-center justify-center border border-gray-100 dark:border-slate-700">
-                                {profile.docPartnerPhoto ? (
+                                {profile.docPartnerPhoto && !imageError ? (
                                     <img
-                                        src={`http://localhost:3000/${profile.docPartnerPhoto}`}
+                                        src={profile.docPartnerPhoto.startsWith('http') ? profile.docPartnerPhoto : `http://localhost:3000/${profile.docPartnerPhoto}`}
                                         alt={profile.fullName}
                                         className="w-full h-full object-cover"
+                                        onError={() => setImageError(true)}
                                     />
                                 ) : (
-                                    <span className="text-5xl font-black text-gray-300">
-                                        {profile.fullName ? profile.fullName.charAt(0) : 'U'}
-                                    </span>
+                                    <div className="w-full h-full flex items-center justify-center bg-gradient-to-br from-blue-500 to-indigo-600 text-white">
+                                        <span className="text-5xl font-black uppercase">
+                                            {(profile.type === 'PF' ? profile.fullName : profile.socialReason)?.charAt(0) || 'U'}
+                                        </span>
+                                    </div>
                                 )}
                             </div>
                         </div>

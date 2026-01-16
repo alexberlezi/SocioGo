@@ -6,6 +6,10 @@ import {
     Eye, Edit, Ban, CheckCircle, FileText, Check, X
 } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
+import * as XLSX from 'xlsx';
+import jsPDF from 'jspdf';
+import autoTable from 'jspdf-autotable';
+import toast from 'react-hot-toast';
 
 // --- Helper Hook: Click Outside ---
 const useClickOutside = (ref, handler) => {
@@ -116,8 +120,43 @@ const PaginationDropdown = ({ value, options, onChange }) => {
     );
 };
 
-// --- Component: Columns Dropdown ---
-const ColumnsDropdown = ({ visibleColumns, toggleColumn, labels }) => {
+const SuspendModal = ({ isOpen, onClose, onConfirm, memberName }) => {
+    if (!isOpen) return null;
+
+    return (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm animate-in fade-in duration-200">
+            <div className="bg-white dark:bg-slate-900 rounded-2xl shadow-2xl max-w-md w-full overflow-hidden border border-red-100 dark:border-red-900/30 transform transition-all scale-100 opacity-100">
+                <div className="p-6 text-center">
+                    <div className="w-16 h-16 bg-red-100 dark:bg-red-900/20 rounded-full flex items-center justify-center mx-auto mb-4">
+                        <Ban className="w-8 h-8 text-red-600 dark:text-red-500" />
+                    </div>
+                    <h3 className="text-xl font-bold text-gray-900 dark:text-white mb-2">Suspender Sócio?</h3>
+                    <p className="text-sm text-gray-500 dark:text-gray-400 mb-6">
+                        Você tem certeza que deseja suspender <strong>{memberName}</strong>? <br />
+                        O usuário perderá acesso imediato ao portal.
+                    </p>
+                    <div className="flex gap-3 justify-center">
+                        <button
+                            onClick={onClose}
+                            className="px-5 py-2.5 rounded-xl border border-gray-200 dark:border-slate-700 text-gray-700 dark:text-gray-300 font-bold hover:bg-gray-50 dark:hover:bg-slate-800 transition-colors"
+                        >
+                            Cancelar
+                        </button>
+                        <button
+                            onClick={onConfirm}
+                            className="px-5 py-2.5 rounded-xl bg-red-600 text-white font-bold hover:bg-red-700 shadow-lg shadow-red-500/20 transition-colors"
+                        >
+                            Sim, Suspender
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    );
+};
+
+// --- Component: ColumnsDropdown ---
+const ColumnsDropdown = ({ visibleColumns, toggleColumn, labels, onReset }) => {
     const [isOpen, setIsOpen] = useState(false);
     const ref = useRef(null);
     useClickOutside(ref, () => setIsOpen(false));
@@ -153,7 +192,14 @@ const ColumnsDropdown = ({ visibleColumns, toggleColumn, labels }) => {
 
                 <div className="p-1.5 max-h-[300px] overflow-y-auto custom-scrollbar">
                     {Object.keys(visibleColumns).map(col => (
-                        <label key={col} className="flex items-center gap-3 w-full px-3 py-2.5 text-sm rounded-lg cursor-pointer transition-colors hover:bg-slate-50 dark:hover:bg-slate-700 group">
+                        <label
+                            key={col}
+                            className="flex items-center gap-3 w-full px-3 py-2.5 text-sm rounded-lg cursor-pointer transition-colors hover:bg-slate-50 dark:hover:bg-slate-700 group"
+                            onClick={(e) => {
+                                e.stopPropagation();
+                                toggleColumn(col);
+                            }}
+                        >
                             <div className={`w-5 h-5 rounded-md border flex items-center justify-center transition-all ${visibleColumns[col] ? 'bg-blue-600 border-blue-600' : 'bg-white dark:bg-slate-800 border-slate-300 dark:border-slate-600 group-hover:border-blue-400'}`}>
                                 {visibleColumns[col] && <Check className="w-3.5 h-3.5 text-white" />}
                             </div>
@@ -168,7 +214,10 @@ const ColumnsDropdown = ({ visibleColumns, toggleColumn, labels }) => {
                     <button onClick={handleSelectAll} className="px-3 py-1.5 text-xs font-bold text-blue-600 hover:bg-blue-50 dark:hover:bg-blue-900/20 rounded-lg transition-colors">
                         Selecionar Todas
                     </button>
-                    <button onClick={() => { /* Logic to reset to defaults could be added here if needed */ }} className="px-3 py-1.5 text-xs font-bold text-gray-500 hover:bg-gray-100 dark:hover:bg-slate-700 rounded-lg transition-colors">
+                    <button
+                        onClick={onReset}
+                        className="px-3 py-1.5 text-xs font-bold text-gray-500 hover:bg-gray-100 dark:hover:bg-slate-700 rounded-lg transition-colors"
+                    >
                         Padrão
                     </button>
                 </div>
@@ -193,8 +242,11 @@ const MembersList = () => {
         limit: 10
     });
 
+    // Modal State
+    const [suspendModal, setSuspendModal] = useState({ isOpen: false, memberId: null, memberName: '' });
+
     // UI State
-    const [visibleColumns, setVisibleColumns] = useState({
+    const initialColumns = {
         // Fixed columns: Name, Status, Actions, Role/Education
         // Optional columns:
         type: true,
@@ -204,7 +256,9 @@ const MembersList = () => {
         city: true,
         createdAt: false,
         company: false
-    });
+    };
+
+    const [visibleColumns, setVisibleColumns] = useState(initialColumns);
 
     // Fetch Data
     const fetchMembers = async (page = 1) => {
@@ -248,6 +302,42 @@ const MembersList = () => {
 
     const toggleColumn = (col) => {
         setVisibleColumns(prev => ({ ...prev, [col]: !prev[col] }));
+    };
+
+    const handleResetColumns = () => {
+        setVisibleColumns(initialColumns);
+    };
+
+    const handleSuspendClick = (member) => {
+        const name = member.profile?.type === 'PF' ? member.profile?.fullName : member.profile?.socialReason;
+        setSuspendModal({ isOpen: true, memberId: member.id, memberName: name });
+    };
+
+    const confirmSuspend = async () => {
+        if (!suspendModal.memberId) return;
+
+        const promise = fetch(`http://localhost:3000/api/admin/members/${suspendModal.memberId}/status`, {
+            method: 'PATCH',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ status: 'SUSPENDED' })
+        }).then(async (res) => {
+            if (!res.ok) throw new Error('Falha ao suspender');
+            return res.json();
+        });
+
+        toast.promise(promise, {
+            loading: 'Suspendendo sócio...',
+            success: 'Sócio suspenso com sucesso!',
+            error: 'Erro ao suspender sócio.'
+        });
+
+        try {
+            await promise;
+            setSuspendModal({ isOpen: false, memberId: null, memberName: '' });
+            fetchMembers(meta.page); // Refresh list
+        } catch (error) {
+            console.error(error);
+        }
     };
 
     const getStatusColor = (status) => {
@@ -302,8 +392,141 @@ const MembersList = () => {
         { value: 100, label: '100 por página' }
     ];
 
+    // Export Logic
+    const handleExport = async (type) => {
+        const toastId = toast.loading('Preparando relatório...');
+        try {
+            // Fetch all filtered data (limit: 1000 for safety)
+            const params = new URLSearchParams({
+                page: 1,
+                limit: 1000,
+                q: searchTerm,
+                ...(filters.status !== 'ALL' && { status: filters.status }),
+                ...(filters.type !== 'ALL' && { type: filters.type }),
+            });
+
+            const response = await fetch(`http://localhost:3000/api/admin/members?${params}`);
+            if (!response.ok) throw new Error('Falha ao buscar dados');
+
+            const result = await response.json();
+            const dataToExport = result.data;
+
+            if (dataToExport.length === 0) {
+                toast.error('Nenhum dado encontrado para os filtros atuais.', { id: toastId });
+                return;
+            }
+
+            const dateStr = new Date().toLocaleDateString('pt-BR').replace(/\//g, '-');
+            const filename = `SocioGo_Relatorio_Socios_${dateStr}`;
+
+            const allColumns = [
+                { key: 'partner', label: 'Sócio', show: true },
+                { key: 'type', label: 'Tipo', show: visibleColumns.type },
+                { key: 'doc', label: 'Documento', show: visibleColumns.doc },
+                { key: 'job', label: 'Cargo/Formação', show: true },
+                { key: 'status', label: 'Status', show: true },
+                { key: 'email', label: 'E-mail', show: visibleColumns.email },
+                { key: 'phone', label: 'Telefone', show: visibleColumns.phone },
+                { key: 'city', label: 'Cidade/UF', show: visibleColumns.city },
+                { key: 'company', label: 'Empresa', show: visibleColumns.company },
+                { key: 'createdAt', label: 'Cadastro', show: visibleColumns.createdAt }
+            ];
+
+            const activeExportCols = allColumns.filter(c => c.show);
+
+            const getRowData = (m) => {
+                const row = {};
+                const map = {
+                    'partner': m.profile?.type === 'PF' ? m.profile?.fullName : m.profile?.socialReason,
+                    'type': m.profile?.type,
+                    'doc': m.profile?.type === 'PF' ? m.profile?.cpf : m.profile?.cnpj,
+                    'job': m.profile?.type === 'PF' ? (m.profile?.jobRole || m.profile?.education || '-') : (m.profile?.activityBranch || '-'),
+                    'status': getStatusLabel(m.status),
+                    'email': m.email,
+                    'phone': m.profile?.phone || '-',
+                    'city': m.profile?.city ? `${m.profile?.city}/${m.profile?.state}` : '-',
+                    'company': m.profile?.currentCompany || '-',
+                    'createdAt': new Date(m.createdAt).toLocaleDateString('pt-BR')
+                };
+                activeExportCols.forEach(col => {
+                    row[col.label] = map[col.key];
+                });
+                return row;
+            };
+
+            if (type === 'excel') {
+                const wsData = dataToExport.map(getRowData);
+                const ws = XLSX.utils.json_to_sheet(wsData);
+                const wb = XLSX.utils.book_new();
+                XLSX.utils.book_append_sheet(wb, ws, "Sócios");
+                XLSX.writeFile(wb, `${filename}.xlsx`);
+            }
+            else if (type === 'pdf') {
+                const doc = new jsPDF({ orientation: 'landscape', format: 'a4' });
+
+                // Header
+                doc.setFillColor(37, 99, 235); // Blue 600
+                doc.rect(0, 0, 297, 24, 'F');
+
+                // Logo Placeholder
+                doc.setFillColor(255, 255, 255);
+                doc.circle(20, 12, 8, 'F');
+                doc.setFontSize(8);
+                doc.setTextColor(37, 99, 235);
+                doc.text("LOGO", 16.5, 13);
+
+                doc.setFontSize(18);
+                doc.setTextColor(255, 255, 255);
+                doc.text("Relatório de Sócios - SocioGo", 35, 16);
+
+                doc.setFontSize(9);
+                doc.setTextColor(255, 255, 255);
+                doc.text(`Gerado em: ${new Date().toLocaleString('pt-BR')}`, 280, 16, { align: 'right' });
+
+                // Table
+                const tableHead = activeExportCols.map(c => c.label);
+                const tableBody = dataToExport.map(m => {
+                    const row = getRowData(m);
+                    return tableHead.map(label => row[label]);
+                });
+
+                autoTable(doc, {
+                    head: [tableHead],
+                    body: tableBody,
+                    startY: 32,
+                    theme: 'grid',
+                    headStyles: {
+                        fillColor: [37, 99, 235], // Blue 600
+                        textColor: 255,
+                        fontStyle: 'bold',
+                        fontSize: 9
+                    },
+                    styles: {
+                        fontSize: 8,
+                        cellPadding: 3
+                    },
+                    alternateRowStyles: { fillColor: [248, 250, 252] }
+                });
+
+                doc.save(`${filename}.pdf`);
+            }
+
+            toast.success('Download iniciado!', { id: toastId });
+        } catch (error) {
+            console.error(error);
+            toast.error('Erro ao exportar dados.', { id: toastId });
+        }
+    };
+
     return (
         <AdminLayout>
+            <SuspendModal
+                isOpen={suspendModal.isOpen}
+                onClose={() => setSuspendModal({ isOpen: false, memberId: null, memberName: '' })}
+                onConfirm={confirmSuspend}
+                memberName={suspendModal.memberName}
+            />
+
             {/* Header */}
             <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-8">
                 <div>
@@ -313,11 +536,17 @@ const MembersList = () => {
                     </p>
                 </div>
                 <div className="flex gap-2">
-                    <button className="flex items-center gap-2 px-4 py-2 bg-white dark:bg-slate-800 border border-gray-200 dark:border-slate-700 rounded-lg text-sm font-bold text-gray-700 dark:text-gray-200 hover:bg-gray-50 dark:hover:bg-slate-700 transition-colors shadow-sm">
+                    <button
+                        onClick={() => handleExport('excel')}
+                        className="flex items-center gap-2 px-4 py-2 bg-white dark:bg-slate-800 border border-gray-200 dark:border-slate-700 rounded-lg text-sm font-bold text-gray-700 dark:text-gray-200 hover:bg-gray-50 dark:hover:bg-slate-700 transition-colors shadow-sm"
+                    >
                         <Download className="w-4 h-4" />
                         <span>Exportar Excel</span>
                     </button>
-                    <button className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg text-sm font-bold hover:bg-blue-700 transition-colors shadow-sm shadow-blue-200 dark:shadow-none">
+                    <button
+                        onClick={() => handleExport('pdf')}
+                        className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg text-sm font-bold hover:bg-blue-700 transition-colors shadow-sm shadow-blue-200 dark:shadow-none"
+                    >
                         <Download className="w-4 h-4" />
                         <span>PDF</span>
                     </button>
@@ -354,6 +583,18 @@ const MembersList = () => {
                         options={typeOptions}
                         onChange={(val) => setFilters(prev => ({ ...prev, type: val }))}
                     />
+
+                    {(searchTerm || filters.status !== 'ALL' || filters.type !== 'ALL') && (
+                        <button
+                            onClick={() => {
+                                setSearchTerm('');
+                                setFilters(prev => ({ ...prev, status: 'ALL', type: 'ALL' }));
+                            }}
+                            className="px-4 py-2 text-sm font-bold text-red-600 bg-red-50 hover:bg-red-100 dark:bg-red-900/20 dark:text-red-400 dark:hover:bg-red-900/40 rounded-xl transition-colors whitespace-nowrap"
+                        >
+                            Limpar Filtros
+                        </button>
+                    )}
                 </div>
 
                 {/* view options */}
@@ -362,6 +603,7 @@ const MembersList = () => {
                         visibleColumns={visibleColumns}
                         toggleColumn={toggleColumn}
                         labels={columnLabels}
+                        onReset={handleResetColumns}
                     />
                 </div>
             </div>
@@ -470,12 +712,30 @@ const MembersList = () => {
                                                 <button title="Ver Carteirinha" className="p-1.5 text-purple-400 hover:text-purple-600 hover:bg-purple-50 dark:hover:bg-purple-900/20 rounded-full transition-colors">
                                                     <FileText className="w-4 h-4" />
                                                 </button>
-                                                <button title="Editar" className="p-1.5 text-blue-400 hover:text-blue-600 hover:bg-blue-50 dark:hover:bg-blue-900/20 rounded-full transition-colors">
+                                                <button
+                                                    onClick={() => navigate(`/admin/members/${member.id}/edit`)}
+                                                    title="Editar"
+                                                    className="p-1.5 text-blue-400 hover:text-blue-600 hover:bg-blue-50 dark:hover:bg-blue-900/20 rounded-full transition-colors"
+                                                >
                                                     <Edit className="w-4 h-4" />
                                                 </button>
-                                                <button title="Suspender" className="p-1.5 text-red-400 hover:text-red-600 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-full transition-colors">
-                                                    <Ban className="w-4 h-4" />
-                                                </button>
+                                                {member.status !== 'SUSPENDED' ? (
+                                                    <button
+                                                        onClick={() => handleSuspendClick(member)}
+                                                        title="Suspender"
+                                                        className="p-1.5 text-red-400 hover:text-red-600 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-full transition-colors"
+                                                    >
+                                                        <Ban className="w-4 h-4" />
+                                                    </button>
+                                                ) : (
+                                                    <button
+                                                        title="Suspenso"
+                                                        disabled
+                                                        className="p-1.5 text-gray-300 dark:text-gray-600 cursor-not-allowed rounded-full transition-colors"
+                                                    >
+                                                        <Ban className="w-4 h-4" />
+                                                    </button>
+                                                )}
                                             </div>
                                         </td>
                                     </tr>

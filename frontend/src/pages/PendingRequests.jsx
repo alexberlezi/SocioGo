@@ -87,13 +87,13 @@ const PendingRequests = () => {
 
             {/* Content Grid */}
             {loading ? (
-                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-5 gap-6 animate-pulse">
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6 animate-pulse">
                     {[1, 2, 3, 4].map(n => (
                         <div key={n} className="aspect-[1.58/1] bg-gray-200 dark:bg-slate-800 rounded-xl"></div>
                     ))}
                 </div>
             ) : filteredMembers.length > 0 ? (
-                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-5 gap-6">
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
                     {filteredMembers.map(member => (
                         <PendingMemberCard key={member.id} member={member} />
                     ))}
