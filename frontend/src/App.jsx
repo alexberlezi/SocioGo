@@ -8,23 +8,43 @@ import EditMemberProfile from './pages/EditMemberProfile';
 import AssociationSettings from './pages/AssociationSettings';
 import MembershipCard from './pages/MembershipCard';
 import { ThemeProvider } from './context/ThemeContext';
-
 import { Toaster } from 'react-hot-toast';
+
+// Portal Imports
+import MemberPortalLayout from './components/layout/MemberPortalLayout';
+import PortalDashboard from './pages/portal/PortalDashboard';
+import PortalVoting from './pages/portal/PortalVoting';
+import PortalCertificates from './pages/portal/PortalCertificates';
 
 function App() {
   return (
     <ThemeProvider>
       <BrowserRouter>
         <Routes>
+          {/* Public */}
           <Route path="/" element={<div className="p-4">Home (Vá para /associe-se)</div>} />
           <Route path="/associe-se" element={<AssocieSe />} />
+
+          {/* Public Verification Route */}
+          <Route path="/portal/carteirinha/:id" element={<MembershipCard />} />
+
+          {/* Admin Routes */}
           <Route path="/admin" element={<AdminDashboard />} />
           <Route path="/admin/approvals" element={<PendingRequests />} />
           <Route path="/admin/members" element={<MembersList />} />
           <Route path="/admin/members/:id/edit" element={<EditMemberProfile />} />
           <Route path="/admin/approvals/:id" element={<MemberDetails />} />
           <Route path="/admin/settings" element={<AssociationSettings />} />
-          <Route path="/portal/carteirinha/:id" element={<MembershipCard />} />
+
+          {/* Member Portal Routes */}
+          <Route path="/portal" element={<MemberPortalLayout />}>
+            <Route index element={<PortalDashboard />} />
+            <Route path="dashboard" element={<PortalDashboard />} />
+            <Route path="carteirinha" element={<MembershipCard />} />
+            <Route path="votacoes" element={<PortalVoting />} />
+            <Route path="certificados" element={<PortalCertificates />} />
+            <Route path="perfil" element={<EditMemberProfile />} />
+          </Route>
         </Routes>
       </BrowserRouter>
 

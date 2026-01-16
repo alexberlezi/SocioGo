@@ -10,6 +10,7 @@ import * as XLSX from 'xlsx';
 import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
 import toast from 'react-hot-toast';
+import MembershipCard from './MembershipCard';
 
 // --- Helper Hook: Click Outside ---
 const useClickOutside = (ref, handler) => {
@@ -244,6 +245,7 @@ const MembersList = () => {
 
     // Modal State
     const [suspendModal, setSuspendModal] = useState({ isOpen: false, memberId: null, memberName: '' });
+    const [cardModal, setCardModal] = useState({ isOpen: false, member: null });
 
     // UI State
     const initialColumns = {
@@ -306,6 +308,23 @@ const MembersList = () => {
 
     const handleResetColumns = () => {
         setVisibleColumns(initialColumns);
+    };
+
+    const handleCardClick = (member) => {
+        // Map member data to card format
+        const cardData = {
+            id: String(member.id),
+            name: member.profile?.type === 'PF' ? member.profile?.fullName : member.profile?.socialReason,
+            role: member.profile?.type === 'PF'
+                ? (member.profile?.jobRole || member.profile?.education || 'Sócio')
+                : (member.profile?.activityBranch || 'Empresa Representante'),
+            admissionDate: new Date(member.createdAt).toLocaleDateString('pt-BR'),
+            validThru: new Date(new Date(member.createdAt).setFullYear(new Date(member.createdAt).getFullYear() + 1)).toLocaleDateString('pt-BR', { month: '2-digit', year: 'numeric' }),
+            status: member.status,
+            photo: member.profile?.docPartnerPhoto || `https://ui-avatars.com/api/?name=${member.profile?.fullName || 'User'}&background=random`,
+            cpf: member.profile?.type === 'PF' ? member.profile?.cpf : member.profile?.cnpj
+        };
+        setCardModal({ isOpen: true, member: cardData });
     };
 
     const handleSuspendClick = (member) => {
@@ -520,268 +539,289 @@ const MembersList = () => {
 
     return (
         <AdminLayout>
-            <SuspendModal
-                isOpen={suspendModal.isOpen}
-                onClose={() => setSuspendModal({ isOpen: false, memberId: null, memberName: '' })}
-                onConfirm={confirmSuspend}
-                memberName={suspendModal.memberName}
-            />
+            <div className="flex flex-col gap-6 w-full max-w-[1600px] mx-auto">
+                <SuspendModal
+                    isOpen={suspendModal.isOpen}
+                    onClose={() => setSuspendModal({ isOpen: false, memberId: null, memberName: '' })}
+                    onConfirm={confirmSuspend}
+                    memberName={suspendModal.memberName}
+                />
 
-            {/* Header */}
-            <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-8">
-                <div>
-                    <h1 className="text-2xl font-bold text-gray-900 dark:text-white">Gestão de Sócios</h1>
-                    <p className="text-gray-500 dark:text-gray-400 text-sm mt-1">
-                        Gerencie a base de membros, exporte dados e realize ações administrativas.
-                    </p>
+                {/* Card Modal */}
+                {cardModal.isOpen && (
+                    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm animate-in fade-in duration-300" onClick={() => setCardModal({ isOpen: false, member: null })}>
+                        <div className="relative transform transition-all scale-100 opacity-100 animate-in zoom-in-95 duration-300" onClick={e => e.stopPropagation()}>
+                            <button
+                                onClick={() => setCardModal({ isOpen: false, member: null })}
+                                className="absolute -top-12 right-0 md:-right-12 p-2 text-white hover:text-gray-300 transition-colors"
+                            >
+                                <X className="w-8 h-8" />
+                            </button>
+                            <MembershipCard memberData={cardModal.member} />
+                        </div>
+                    </div>
+                )}
+
+                {/* Header */}
+                <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+                    <div>
+                        <h1 className="text-2xl font-bold text-gray-900 dark:text-white">Gestão de Sócios</h1>
+                        <p className="text-gray-500 dark:text-gray-400 text-sm mt-1">
+                            Gerencie a base de membros, exporte dados e realize ações administrativas.
+                        </p>
+                    </div>
+                    <div className="flex gap-2">
+                        <button
+                            onClick={() => handleExport('excel')}
+                            className="flex items-center gap-2 px-4 py-2 bg-white dark:bg-slate-800 border border-gray-200 dark:border-slate-700 rounded-lg text-sm font-bold text-gray-700 dark:text-gray-200 hover:bg-gray-50 dark:hover:bg-slate-700 transition-colors shadow-sm"
+                        >
+                            <Download className="w-4 h-4" />
+                            <span>Exportar Excel</span>
+                        </button>
+                        <button
+                            onClick={() => handleExport('pdf')}
+                            className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg text-sm font-bold hover:bg-blue-700 transition-colors shadow-sm shadow-blue-200 dark:shadow-none"
+                        >
+                            <Download className="w-4 h-4" />
+                            <span>PDF</span>
+                        </button>
+                    </div>
                 </div>
-                <div className="flex gap-2">
-                    <button
-                        onClick={() => handleExport('excel')}
-                        className="flex items-center gap-2 px-4 py-2 bg-white dark:bg-slate-800 border border-gray-200 dark:border-slate-700 rounded-lg text-sm font-bold text-gray-700 dark:text-gray-200 hover:bg-gray-50 dark:hover:bg-slate-700 transition-colors shadow-sm"
-                    >
-                        <Download className="w-4 h-4" />
-                        <span>Exportar Excel</span>
-                    </button>
-                    <button
-                        onClick={() => handleExport('pdf')}
-                        className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg text-sm font-bold hover:bg-blue-700 transition-colors shadow-sm shadow-blue-200 dark:shadow-none"
-                    >
-                        <Download className="w-4 h-4" />
-                        <span>PDF</span>
-                    </button>
-                </div>
-            </div>
 
-            {/* Toolbar */}
-            <div className="bg-white dark:bg-slate-900 p-4 rounded-xl border border-gray-200 dark:border-slate-800 shadow-sm mb-6 space-y-4 md:space-y-0 md:flex md:items-center md:justify-between">
+                {/* Toolbar */}
+                <div className="bg-white dark:bg-slate-900 p-4 rounded-xl border border-gray-200 dark:border-slate-800 shadow-sm space-y-4 md:space-y-0 md:flex md:items-center md:justify-between">
 
-                {/* Search & Global Filters */}
-                <div className="flex flex-col md:flex-row gap-3 flex-1">
-                    <div className="relative w-full md:max-w-xs">
-                        <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-gray-400" />
-                        <input
-                            type="text"
-                            placeholder="Busca Rápida..."
-                            value={searchTerm}
-                            onChange={(e) => setSearchTerm(e.target.value)}
-                            className="w-full pl-10 pr-4 py-2.5 bg-slate-50 dark:bg-slate-800 border-2 border-slate-100 dark:border-slate-700 rounded-xl text-sm focus:ring-2 focus:ring-blue-100 dark:focus:ring-blue-900/30 focus:border-blue-500 outline-none text-gray-900 dark:text-white placeholder-gray-400 transition-all font-medium"
+                    {/* Search & Global Filters */}
+                    <div className="flex flex-col md:flex-row gap-3 flex-1">
+                        <div className="relative w-full md:max-w-xs">
+                            <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-gray-400" />
+                            <input
+                                type="text"
+                                placeholder="Busca Rápida..."
+                                value={searchTerm}
+                                onChange={(e) => setSearchTerm(e.target.value)}
+                                className="w-full pl-10 pr-4 py-2.5 bg-slate-50 dark:bg-slate-800 border-2 border-slate-100 dark:border-slate-700 rounded-xl text-sm focus:ring-2 focus:ring-blue-100 dark:focus:ring-blue-900/30 focus:border-blue-500 outline-none text-gray-900 dark:text-white placeholder-gray-400 transition-all font-medium"
+                            />
+                        </div>
+
+                        <FilterDropdown
+                            label="Filtrar por Status"
+                            value={filters.status}
+                            options={statusOptions}
+                            onChange={(val) => setFilters(prev => ({ ...prev, status: val }))}
+                            icon={Filter}
                         />
+
+                        <FilterDropdown
+                            label="Filtrar por Tipo"
+                            value={filters.type}
+                            options={typeOptions}
+                            onChange={(val) => setFilters(prev => ({ ...prev, type: val }))}
+                        />
+
+                        {(searchTerm || filters.status !== 'ALL' || filters.type !== 'ALL') && (
+                            <button
+                                onClick={() => {
+                                    setSearchTerm('');
+                                    setFilters(prev => ({ ...prev, status: 'ALL', type: 'ALL' }));
+                                }}
+                                className="px-4 py-2 text-sm font-bold text-red-600 bg-red-50 hover:bg-red-100 dark:bg-red-900/20 dark:text-red-400 dark:hover:bg-red-900/40 rounded-xl transition-colors whitespace-nowrap"
+                            >
+                                Limpar Filtros
+                            </button>
+                        )}
                     </div>
 
-                    <FilterDropdown
-                        label="Filtrar por Status"
-                        value={filters.status}
-                        options={statusOptions}
-                        onChange={(val) => setFilters(prev => ({ ...prev, status: val }))}
-                        icon={Filter}
-                    />
-
-                    <FilterDropdown
-                        label="Filtrar por Tipo"
-                        value={filters.type}
-                        options={typeOptions}
-                        onChange={(val) => setFilters(prev => ({ ...prev, type: val }))}
-                    />
-
-                    {(searchTerm || filters.status !== 'ALL' || filters.type !== 'ALL') && (
-                        <button
-                            onClick={() => {
-                                setSearchTerm('');
-                                setFilters(prev => ({ ...prev, status: 'ALL', type: 'ALL' }));
-                            }}
-                            className="px-4 py-2 text-sm font-bold text-red-600 bg-red-50 hover:bg-red-100 dark:bg-red-900/20 dark:text-red-400 dark:hover:bg-red-900/40 rounded-xl transition-colors whitespace-nowrap"
-                        >
-                            Limpar Filtros
-                        </button>
-                    )}
+                    {/* view options */}
+                    <div className="relative">
+                        <ColumnsDropdown
+                            visibleColumns={visibleColumns}
+                            toggleColumn={toggleColumn}
+                            labels={columnLabels}
+                            onReset={handleResetColumns}
+                        />
+                    </div>
                 </div>
 
-                {/* view options */}
-                <div className="relative">
-                    <ColumnsDropdown
-                        visibleColumns={visibleColumns}
-                        toggleColumn={toggleColumn}
-                        labels={columnLabels}
-                        onReset={handleResetColumns}
-                    />
-                </div>
-            </div>
+                {/* Data Table */}
+                <div className="bg-white dark:bg-slate-900 rounded-xl border border-gray-200 dark:border-slate-800 shadow-sm flex flex-col w-full">
+                    <div className="overflow-x-auto min-w-full rounded-t-xl overflow-hidden">
+                        <table className="w-full min-w-full text-left border-collapse">
+                            <thead>
+                                <tr className="bg-gray-100 dark:bg-slate-800 border-b border-gray-200 dark:border-slate-700">
+                                    <th className="px-6 py-4 text-xs font-bold text-gray-500 dark:text-gray-400 uppercase tracking-wider sticky left-0 bg-gray-100 dark:bg-slate-800 z-10 w-[200px] md:w-[300px]">Sócio</th>
+                                    {visibleColumns.type && <th className="px-6 py-4 text-xs font-bold text-gray-500 dark:text-gray-400 uppercase tracking-wider whitespace-nowrap w-24">Tipo</th>}
+                                    <th className="px-6 py-4 text-xs font-bold text-gray-500 dark:text-gray-400 uppercase tracking-wider whitespace-nowrap">Formação/Cargo</th>
+                                    <th className="px-6 py-4 text-xs font-bold text-gray-500 dark:text-gray-400 uppercase tracking-wider w-32">Status</th>
 
-            {/* Data Table */}
-            <div className="bg-white dark:bg-slate-900 rounded-xl border border-gray-200 dark:border-slate-800 shadow-sm flex flex-col w-full">
-                <div className="overflow-x-auto min-w-full rounded-t-xl overflow-hidden">
-                    <table className="w-full min-w-full text-left border-collapse">
-                        <thead>
-                            <tr className="bg-gray-100 dark:bg-slate-800 border-b border-gray-200 dark:border-slate-700">
-                                <th className="px-6 py-4 text-xs font-bold text-gray-500 dark:text-gray-400 uppercase tracking-wider sticky left-0 bg-gray-100 dark:bg-slate-800 z-10 w-[200px] md:w-[300px]">Sócio</th>
-                                {visibleColumns.type && <th className="px-6 py-4 text-xs font-bold text-gray-500 dark:text-gray-400 uppercase tracking-wider whitespace-nowrap w-24">Tipo</th>}
-                                <th className="px-6 py-4 text-xs font-bold text-gray-500 dark:text-gray-400 uppercase tracking-wider whitespace-nowrap">Formação/Cargo</th>
-                                <th className="px-6 py-4 text-xs font-bold text-gray-500 dark:text-gray-400 uppercase tracking-wider w-32">Status</th>
+                                    {visibleColumns.doc && <th className="px-6 py-4 text-xs font-bold text-gray-500 dark:text-gray-400 uppercase tracking-wider whitespace-nowrap">CPF/CNPJ</th>}
+                                    {visibleColumns.email && <th className="px-6 py-4 text-xs font-bold text-gray-500 dark:text-gray-400 uppercase tracking-wider">E-mail</th>}
+                                    {visibleColumns.phone && <th className="px-6 py-4 text-xs font-bold text-gray-500 dark:text-gray-400 uppercase tracking-wider">Telefone</th>}
+                                    {visibleColumns.city && <th className="px-6 py-4 text-xs font-bold text-gray-500 dark:text-gray-400 uppercase tracking-wider whitespace-nowrap">Cidade/UF</th>}
+                                    {visibleColumns.company && <th className="px-6 py-4 text-xs font-bold text-gray-500 dark:text-gray-400 uppercase tracking-wider">Empresa</th>}
+                                    {visibleColumns.createdAt && <th className="px-6 py-4 text-xs font-bold text-gray-500 dark:text-gray-400 uppercase tracking-wider whitespace-nowrap">Adesão</th>}
 
-                                {visibleColumns.doc && <th className="px-6 py-4 text-xs font-bold text-gray-500 dark:text-gray-400 uppercase tracking-wider whitespace-nowrap">CPF/CNPJ</th>}
-                                {visibleColumns.email && <th className="px-6 py-4 text-xs font-bold text-gray-500 dark:text-gray-400 uppercase tracking-wider">E-mail</th>}
-                                {visibleColumns.phone && <th className="px-6 py-4 text-xs font-bold text-gray-500 dark:text-gray-400 uppercase tracking-wider">Telefone</th>}
-                                {visibleColumns.city && <th className="px-6 py-4 text-xs font-bold text-gray-500 dark:text-gray-400 uppercase tracking-wider whitespace-nowrap">Cidade/UF</th>}
-                                {visibleColumns.company && <th className="px-6 py-4 text-xs font-bold text-gray-500 dark:text-gray-400 uppercase tracking-wider">Empresa</th>}
-                                {visibleColumns.createdAt && <th className="px-6 py-4 text-xs font-bold text-gray-500 dark:text-gray-400 uppercase tracking-wider whitespace-nowrap">Adesão</th>}
+                                    <th className="px-6 py-4 text-xs font-bold text-gray-500 dark:text-gray-400 uppercase tracking-wider text-right sticky right-0 bg-gray-100 dark:bg-slate-800 z-10 w-32">Ações</th>
+                                </tr>
+                            </thead>
+                            <tbody className="divide-y divide-gray-100 dark:divide-slate-800">
+                                {loading ? (
+                                    Array(5).fill(0).map((_, i) => (
+                                        <tr key={i} className="animate-pulse">
+                                            <td colSpan="12" className="px-6 py-4">
+                                                <div className="h-4 bg-gray-200 dark:bg-slate-800 rounded w-full"></div>
+                                            </td>
+                                        </tr>
+                                    ))
+                                ) : members.length > 0 ? (
+                                    members.map((member, index) => (
+                                        <tr key={member.id} className={`${index % 2 === 0 ? 'bg-white dark:bg-slate-900' : 'bg-gray-50 dark:bg-slate-900/50'} hover:bg-blue-50 dark:hover:bg-slate-800 transition-colors group`}>
+                                            {/* Fixed Column: Partner Name */}
+                                            <td className="px-6 py-4 sticky left-0 bg-inherit z-10">
+                                                <div className="font-bold text-sm text-gray-900 dark:text-white">
+                                                    {member.profile?.type === 'PF' ? member.profile?.fullName : member.profile?.socialReason}
+                                                </div>
+                                                {member.profile?.type && !visibleColumns.type && ( // Fallback show if column hidden? No, just hide it.
+                                                    null
+                                                )}
+                                            </td>
 
-                                <th className="px-6 py-4 text-xs font-bold text-gray-500 dark:text-gray-400 uppercase tracking-wider text-right sticky right-0 bg-gray-100 dark:bg-slate-800 z-10 w-32">Ações</th>
-                            </tr>
-                        </thead>
-                        <tbody className="divide-y divide-gray-100 dark:divide-slate-800">
-                            {loading ? (
-                                Array(5).fill(0).map((_, i) => (
-                                    <tr key={i} className="animate-pulse">
-                                        <td colSpan="12" className="px-6 py-4">
-                                            <div className="h-4 bg-gray-200 dark:bg-slate-800 rounded w-full"></div>
-                                        </td>
-                                    </tr>
-                                ))
-                            ) : members.length > 0 ? (
-                                members.map((member, index) => (
-                                    <tr key={member.id} className={`${index % 2 === 0 ? 'bg-white dark:bg-slate-900' : 'bg-gray-50 dark:bg-slate-900/50'} hover:bg-blue-50 dark:hover:bg-slate-800 transition-colors group`}>
-                                        {/* Fixed Column: Partner Name */}
-                                        <td className="px-6 py-4 sticky left-0 bg-inherit z-10">
-                                            <div className="font-bold text-sm text-gray-900 dark:text-white">
-                                                {member.profile?.type === 'PF' ? member.profile?.fullName : member.profile?.socialReason}
-                                            </div>
-                                            {member.profile?.type && !visibleColumns.type && ( // Fallback show if column hidden? No, just hide it.
-                                                null
+                                            {/* Toggleable Column: Type */}
+                                            {visibleColumns.type && (
+                                                <td className="px-6 py-4">
+                                                    <span className={`px-2 py-0.5 rounded text-[10px] uppercase font-bold border ${member.profile?.type === 'PF' ? 'bg-blue-50 text-blue-600 border-blue-100 dark:bg-blue-900/30 dark:text-blue-300 dark:border-blue-800' : 'bg-purple-50 text-purple-600 border-purple-100 dark:bg-purple-900/30 dark:text-purple-300 dark:border-purple-800'}`}>
+                                                        {member.profile?.type}
+                                                    </span>
+                                                </td>
                                             )}
-                                        </td>
 
-                                        {/* Toggleable Column: Type */}
-                                        {visibleColumns.type && (
+                                            {/* Fixed Column: Role/Education */}
+                                            <td className="px-6 py-4 text-sm text-gray-600 dark:text-gray-300 whitespace-nowrap">
+                                                {member.profile?.type === 'PF'
+                                                    ? (member.profile?.jobRole || member.profile?.education || '-')
+                                                    : (member.profile?.activityBranch || '-')}
+                                            </td>
+
+                                            {/* Fixed Column: Status */}
                                             <td className="px-6 py-4">
-                                                <span className={`px-2 py-0.5 rounded text-[10px] uppercase font-bold border ${member.profile?.type === 'PF' ? 'bg-blue-50 text-blue-600 border-blue-100 dark:bg-blue-900/30 dark:text-blue-300 dark:border-blue-800' : 'bg-purple-50 text-purple-600 border-purple-100 dark:bg-purple-900/30 dark:text-purple-300 dark:border-purple-800'}`}>
-                                                    {member.profile?.type}
+                                                <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-bold border ${getStatusColor(member.status)}`}>
+                                                    {getStatusLabel(member.status)}
                                                 </span>
                                             </td>
-                                        )}
 
-                                        {/* Fixed Column: Role/Education */}
-                                        <td className="px-6 py-4 text-sm text-gray-600 dark:text-gray-300 whitespace-nowrap">
-                                            {member.profile?.type === 'PF'
-                                                ? (member.profile?.jobRole || member.profile?.education || '-')
-                                                : (member.profile?.activityBranch || '-')}
-                                        </td>
+                                            {/* Optional Columns */}
+                                            {visibleColumns.doc && (
+                                                <td className="px-6 py-4 text-sm text-gray-600 dark:text-gray-400 font-mono whitespace-nowrap">
+                                                    {member.profile?.type === 'PF' ? member.profile?.cpf : member.profile?.cnpj}
+                                                </td>
+                                            )}
+                                            {visibleColumns.email && (
+                                                <td className="px-6 py-4 text-sm text-gray-600 dark:text-gray-400">
+                                                    {member.email}
+                                                </td>
+                                            )}
+                                            {visibleColumns.phone && (
+                                                <td className="px-6 py-4 text-sm text-gray-600 dark:text-gray-400 whitespace-nowrap">
+                                                    {member.profile?.phone || '-'}
+                                                </td>
+                                            )}
+                                            {visibleColumns.city && (
+                                                <td className="px-6 py-4 text-sm text-gray-600 dark:text-gray-400 whitespace-nowrap">
+                                                    {member.profile?.city ? `${member.profile.city}/${member.profile.state}` : '-'}
+                                                </td>
+                                            )}
+                                            {visibleColumns.company && (
+                                                <td className="px-6 py-4 text-sm text-gray-600 dark:text-gray-400">
+                                                    {member.profile?.currentCompany || '-'}
+                                                </td>
+                                            )}
+                                            {visibleColumns.createdAt && (
+                                                <td className="px-6 py-4 text-sm text-gray-500 whitespace-nowrap">
+                                                    {new Date(member.createdAt).toLocaleDateString('pt-BR')}
+                                                </td>
+                                            )}
 
-                                        {/* Fixed Column: Status */}
-                                        <td className="px-6 py-4">
-                                            <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-bold border ${getStatusColor(member.status)}`}>
-                                                {getStatusLabel(member.status)}
-                                            </span>
-                                        </td>
-
-                                        {/* Optional Columns */}
-                                        {visibleColumns.doc && (
-                                            <td className="px-6 py-4 text-sm text-gray-600 dark:text-gray-400 font-mono whitespace-nowrap">
-                                                {member.profile?.type === 'PF' ? member.profile?.cpf : member.profile?.cnpj}
-                                            </td>
-                                        )}
-                                        {visibleColumns.email && (
-                                            <td className="px-6 py-4 text-sm text-gray-600 dark:text-gray-400">
-                                                {member.email}
-                                            </td>
-                                        )}
-                                        {visibleColumns.phone && (
-                                            <td className="px-6 py-4 text-sm text-gray-600 dark:text-gray-400 whitespace-nowrap">
-                                                {member.profile?.phone || '-'}
-                                            </td>
-                                        )}
-                                        {visibleColumns.city && (
-                                            <td className="px-6 py-4 text-sm text-gray-600 dark:text-gray-400 whitespace-nowrap">
-                                                {member.profile?.city ? `${member.profile.city}/${member.profile.state}` : '-'}
-                                            </td>
-                                        )}
-                                        {visibleColumns.company && (
-                                            <td className="px-6 py-4 text-sm text-gray-600 dark:text-gray-400">
-                                                {member.profile?.currentCompany || '-'}
-                                            </td>
-                                        )}
-                                        {visibleColumns.createdAt && (
-                                            <td className="px-6 py-4 text-sm text-gray-500 whitespace-nowrap">
-                                                {new Date(member.createdAt).toLocaleDateString('pt-BR')}
-                                            </td>
-                                        )}
-
-                                        {/* Fixed Column: Actions (Always visible) */}
-                                        <td className="px-6 py-4 text-right sticky right-0 bg-inherit z-10 w-32">
-                                            <div className="flex items-center justify-end gap-1">
-                                                <button title="Ver Carteirinha" className="p-1.5 text-purple-400 hover:text-purple-600 hover:bg-purple-50 dark:hover:bg-purple-900/20 rounded-full transition-colors">
-                                                    <FileText className="w-4 h-4" />
-                                                </button>
-                                                <button
-                                                    onClick={() => navigate(`/admin/members/${member.id}/edit`)}
-                                                    title="Editar"
-                                                    className="p-1.5 text-blue-400 hover:text-blue-600 hover:bg-blue-50 dark:hover:bg-blue-900/20 rounded-full transition-colors"
-                                                >
-                                                    <Edit className="w-4 h-4" />
-                                                </button>
-                                                {member.status !== 'SUSPENDED' ? (
+                                            {/* Fixed Column: Actions (Always visible) */}
+                                            <td className="px-6 py-4 text-right sticky right-0 bg-inherit z-10 w-32">
+                                                <div className="flex items-center justify-end gap-1">
                                                     <button
-                                                        onClick={() => handleSuspendClick(member)}
-                                                        title="Suspender"
-                                                        className="p-1.5 text-red-400 hover:text-red-600 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-full transition-colors"
+                                                        onClick={() => handleCardClick(member)}
+                                                        title="Ver Carteirinha"
+                                                        className="p-1.5 text-purple-400 hover:text-purple-600 hover:bg-purple-50 dark:hover:bg-purple-900/20 rounded-full transition-colors"
                                                     >
-                                                        <Ban className="w-4 h-4" />
+                                                        <FileText className="w-4 h-4" />
                                                     </button>
-                                                ) : (
                                                     <button
-                                                        title="Suspenso"
-                                                        disabled
-                                                        className="p-1.5 text-gray-300 dark:text-gray-600 cursor-not-allowed rounded-full transition-colors"
+                                                        onClick={() => navigate(`/admin/members/${member.id}/edit`)}
+                                                        title="Editar"
+                                                        className="p-1.5 text-blue-400 hover:text-blue-600 hover:bg-blue-50 dark:hover:bg-blue-900/20 rounded-full transition-colors"
                                                     >
-                                                        <Ban className="w-4 h-4" />
+                                                        <Edit className="w-4 h-4" />
                                                     </button>
-                                                )}
-                                            </div>
+                                                    {member.status !== 'SUSPENDED' ? (
+                                                        <button
+                                                            onClick={() => handleSuspendClick(member)}
+                                                            title="Suspender"
+                                                            className="p-1.5 text-red-400 hover:text-red-600 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-full transition-colors"
+                                                        >
+                                                            <Ban className="w-4 h-4" />
+                                                        </button>
+                                                    ) : (
+                                                        <button
+                                                            title="Suspenso"
+                                                            disabled
+                                                            className="p-1.5 text-gray-300 dark:text-gray-600 cursor-not-allowed rounded-full transition-colors"
+                                                        >
+                                                            <Ban className="w-4 h-4" />
+                                                        </button>
+                                                    )}
+                                                </div>
+                                            </td>
+                                        </tr>
+                                    ))
+                                ) : (
+                                    <tr>
+                                        <td colSpan="12" className="px-6 py-12 text-center text-gray-500">
+                                            Nenhum sócio encontrado com os filtros atuais.
                                         </td>
                                     </tr>
-                                ))
-                            ) : (
-                                <tr>
-                                    <td colSpan="12" className="px-6 py-12 text-center text-gray-500">
-                                        Nenhum sócio encontrado com os filtros atuais.
-                                    </td>
-                                </tr>
-                            )}
-                        </tbody>
-                    </table>
-                </div>
-
-                {/* Pagination */}
-                <div className="px-6 py-4 border-t border-gray-100 dark:border-slate-800 flex flex-col md:flex-row items-center justify-between gap-4 bg-white dark:bg-slate-900 rounded-b-xl">
-                    <div className="text-sm text-gray-500">
-                        Mostrando <span className="font-bold text-gray-900 dark:text-white">{(meta.page - 1) * filters.limit + 1}</span> a <span className="font-bold text-gray-900 dark:text-white">{Math.min(meta.page * filters.limit, meta.total)}</span> de <span className="font-bold text-gray-900 dark:text-white">{meta.total}</span> registros
+                                )}
+                            </tbody>
+                        </table>
                     </div>
 
-                    <div className="flex items-center gap-4">
-                        <PaginationDropdown
-                            value={filters.limit}
-                            options={limitOptions}
-                            onChange={(val) => setFilters(prev => ({ ...prev, limit: Number(val) }))}
-                        />
+                    {/* Pagination */}
+                    <div className="px-6 py-4 border-t border-gray-100 dark:border-slate-800 flex flex-col md:flex-row items-center justify-between gap-4 bg-white dark:bg-slate-900 rounded-b-xl">
+                        <div className="text-sm text-gray-500">
+                            Mostrando <span className="font-bold text-gray-900 dark:text-white">{(meta.page - 1) * filters.limit + 1}</span> a <span className="font-bold text-gray-900 dark:text-white">{Math.min(meta.page * filters.limit, meta.total)}</span> de <span className="font-bold text-gray-900 dark:text-white">{meta.total}</span> registros
+                        </div>
 
-                        <div className="flex items-center gap-1">
-                            <button
-                                onClick={() => handlePageChange(meta.page - 1)}
-                                disabled={meta.page === 1}
-                                className="p-2 rounded-lg border border-gray-200 dark:border-slate-700 hover:bg-gray-50 dark:hover:bg-slate-800 disabled:opacity-50 disabled:cursor-not-allowed text-gray-600 dark:text-gray-400"
-                            >
-                                <ChevronLeft className="w-4 h-4" />
-                            </button>
-                            <span className="px-4 text-sm font-medium text-gray-700 dark:text-gray-300">
-                                Página {meta.page} de {meta.lastPage || 1}
-                            </span>
-                            <button
-                                onClick={() => handlePageChange(meta.page + 1)}
-                                disabled={meta.page === meta.lastPage}
-                                className="p-2 rounded-lg border border-gray-200 dark:border-slate-700 hover:bg-gray-50 dark:hover:bg-slate-800 disabled:opacity-50 disabled:cursor-not-allowed text-gray-600 dark:text-gray-400"
-                            >
-                                <ChevronRight className="w-4 h-4" />
-                            </button>
+                        <div className="flex items-center gap-4">
+                            <PaginationDropdown
+                                value={filters.limit}
+                                options={limitOptions}
+                                onChange={(val) => setFilters(prev => ({ ...prev, limit: Number(val) }))}
+                            />
+
+                            <div className="flex items-center gap-1">
+                                <button
+                                    onClick={() => handlePageChange(meta.page - 1)}
+                                    disabled={meta.page === 1}
+                                    className="p-2 rounded-lg border border-gray-200 dark:border-slate-700 hover:bg-gray-50 dark:hover:bg-slate-800 disabled:opacity-50 disabled:cursor-not-allowed text-gray-600 dark:text-gray-400"
+                                >
+                                    <ChevronLeft className="w-4 h-4" />
+                                </button>
+                                <span className="px-4 text-sm font-medium text-gray-700 dark:text-gray-300">
+                                    Página {meta.page} de {meta.lastPage || 1}
+                                </span>
+                                <button
+                                    onClick={() => handlePageChange(meta.page + 1)}
+                                    disabled={meta.page === meta.lastPage}
+                                    className="p-2 rounded-lg border border-gray-200 dark:border-slate-700 hover:bg-gray-50 dark:hover:bg-slate-800 disabled:opacity-50 disabled:cursor-not-allowed text-gray-600 dark:text-gray-400"
+                                >
+                                    <ChevronRight className="w-4 h-4" />
+                                </button>
+                            </div>
                         </div>
                     </div>
                 </div>
