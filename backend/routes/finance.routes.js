@@ -4,6 +4,117 @@ const { PrismaClient } = require('@prisma/client');
 const prisma = new PrismaClient();
 
 // GET /api/finance/members/:id/history - Get member financial history
+// GET /api/finance/dashboard
+router.get('/dashboard', async (req, res) => {
+    try {
+        const now = new Date();
+        const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
+        const endOfMonth = new Date(now.getFullYear(), now.getMonth() + 1, 0);
+
+        // 1. Metrics
+        // Revenue (Paid this month)
+        const revenue = await prisma.financialRecord.aggregate({
+            where: {
+                status: 'PAID',
+                updatedAt: { gte: startOfMonth, lte: endOfMonth }
+            },
+            _sum: { amount: true }
+        });
+
+        // Delinquency (Total Overdue)
+        const delinquency = await prisma.financialRecord.aggregate({
+            where: { status: 'OVERDUE' },
+            _sum: { amount: true }
+        });
+
+        // Projection (Pending this month)
+        const projection = await prisma.financialRecord.aggregate({
+            where: {
+                status: 'PENDING',
+                dueDate: { lte: endOfMonth }
+            },
+            _sum: { amount: true }
+        });
+
+        // New Members (Current Month)
+        const newMembersCount = await prisma.user.count({
+            where: {
+                createdAt: { gte: startOfMonth, lte: endOfMonth },
+                role: 'SOCIO'
+            }
+        });
+
+        // 2. Chart Data (Last 6 Months)
+        const chartData = [];
+        for (let i = 5; i >= 0; i--) {
+            const d = new Date(now.getFullYear(), now.getMonth() - i, 1);
+            const mStart = new Date(d.getFullYear(), d.getMonth(), 1);
+            const mEnd = new Date(d.getFullYear(), d.getMonth() + 1, 0);
+
+            const monthName = d.toLocaleDateString('pt-BR', { month: 'short' });
+
+            const paid = await prisma.financialRecord.aggregate({
+                where: { status: 'PAID', dueDate: { gte: mStart, lte: mEnd } },
+                _sum: { amount: true }
+            });
+            const pending = await prisma.financialRecord.aggregate({
+                where: { status: { in: ['PENDING', 'OVERDUE'] }, dueDate: { gte: mStart, lte: mEnd } },
+                _sum: { amount: true }
+            });
+
+            chartData.push({
+                name: monthName.charAt(0).toUpperCase() + monthName.slice(1),
+                pago: Number(paid._sum.amount) || 0,
+                pendente: Number(pending._sum.amount) || 0
+            });
+        }
+
+        // 3. Upcoming Payments
+        const upcoming = await prisma.financialRecord.findMany({
+            where: { status: 'PENDING', dueDate: { gte: now } },
+            take: 5,
+            orderBy: { dueDate: 'asc' },
+            include: { user: { include: { profile: true } } }
+        });
+
+        // 4. Critical Delays
+        const critical = await prisma.financialRecord.findMany({
+            where: { status: 'OVERDUE' },
+            take: 5,
+            orderBy: { dueDate: 'asc' },
+            include: { user: { include: { profile: true } } }
+        });
+
+        res.json({
+            metrics: {
+                revenue: Number(revenue._sum.amount) || 0,
+                delinquency: Number(delinquency._sum.amount) || 0,
+                projection: Number(projection._sum.amount) || 0,
+                newMembers: newMembersCount
+            },
+            chartData,
+            upcoming: upcoming.map(r => ({
+                id: r.id,
+                memberName: r.user.profile?.fullName || r.user.profile?.socialReason || 'Sócio',
+                amount: r.amount,
+                dueDate: r.dueDate,
+                phone: r.user.profile?.phone
+            })),
+            critical: critical.map(r => ({
+                id: r.id,
+                memberName: r.user.profile?.fullName || r.user.profile?.socialReason || 'Sócio',
+                amount: r.amount,
+                daysOverdue: Math.floor((now - new Date(r.dueDate)) / (1000 * 60 * 60 * 24)),
+                phone: r.user.profile?.phone
+            }))
+        });
+
+    } catch (error) {
+        console.error('Error fetching finance dashboard:', error);
+        res.status(500).json({ error: 'Erro ao buscar dados do dashboard financeiro' });
+    }
+});
+
 router.get('/members/:id/history', async (req, res) => {
     try {
         const { id } = req.params;

@@ -96,7 +96,8 @@ const Sidebar = () => {
                 <NavItem
                     icon={DollarSign}
                     label="Financeiro"
-                    to="/admin/finance"
+                    to="/admin/financeiro"
+                    active={isActive('/admin/financeiro')}
                 />
                 <NavItem
                     icon={Calendar}
